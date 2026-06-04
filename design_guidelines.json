@@ -1,0 +1,109 @@
+{
+  "theme": "light",
+  "archetype": "4 (Swiss & High-Contrast)",
+  "design_philosophy": {
+    "core_principles": [
+      "Objective, rigid, and function-first.",
+      "Raw blocks, minimal ornamentation, utilitarian feel.",
+      "High contrast: Stark black/white with Signal Red for critical review items."
+    ],
+    "mood": "Professional, authoritative, data-driven."
+  },
+  "typography": {
+    "headings": {
+      "family": "'Cabinet Grotesk', sans-serif",
+      "weight": "font-black",
+      "tracking": "tracking-tight",
+      "casing": "normal-case"
+    },
+    "body": {
+      "family": "'IBM Plex Sans', sans-serif",
+      "weight": "font-normal",
+      "tracking": "tracking-normal",
+      "casing": "normal-case"
+    },
+    "labels_overlines": {
+      "family": "'IBM Plex Mono', monospace",
+      "weight": "font-bold",
+      "tracking": "tracking-[0.2em]",
+      "casing": "uppercase"
+    }
+  },
+  "colors": {
+    "background": {
+      "primary": "#FFFFFF",
+      "secondary": "#F3F4F6",
+      "tertiary": "#E5E7EB"
+    },
+    "text": {
+      "primary": "#0A0A0A",
+      "secondary": "#4B5563",
+      "inverse": "#FFFFFF"
+    },
+    "accent": {
+      "primary": "#000000",
+      "signal_red": "#DC2626",
+      "signal_green": "#059669",
+      "warning": "#FACC15"
+    },
+    "borders": {
+      "default": "#D1D5DB",
+      "heavy": "#000000"
+    }
+  },
+  "layout_and_spacing": {
+    "grid_system": "The Control Room Grid (tight gaps, dense data).",
+    "container_padding": "Generous on wrappers (p-8 to p-12), tight inside tables (p-2).",
+    "borders": "Thick 2px borders for main containers to give a brutalist edge.",
+    "shadows": "Hard offset shadows (e.g., 4px 4px 0px 0px rgba(0,0,0,1)) for interactive elements like buttons and active cards."
+  },
+  "components": {
+    "data_table": {
+      "density": "Condensed row height (40px).",
+      "borders": "Subtle zebra striping (bg-gray-50 for even rows), solid 1px bottom border on rows.",
+      "header": "Sticky header, uppercase labels, bold.",
+      "alignment": "Text left-aligned, numbers (costs/margins) right-aligned.",
+      "actions": "Hover-only row actions or sticky right column.",
+      "highlighting": "Rows needing review MUST have a thick left border (border-l-4 border-red-600) and a subtle red background tint (bg-red-50) to instantly draw attention."
+    },
+    "buttons": {
+      "primary": "Square or very slightly rounded (rounded-sm), black background, white text, hard offset shadow on hover.",
+      "secondary": "Transparent background, 2px black border, black text.",
+      "danger": "Signal Red background, white text."
+    },
+    "inputs": {
+      "style": "Square edges, 2px border on focus, high contrast text."
+    },
+    "file_upload": {
+      "style": "Large dashed border area, light gray background, turns darker on drag over. Centered icon."
+    }
+  },
+  "icons": {
+    "library": "Phosphor Icons (@phosphor-icons/react) for dense, professional looks.",
+    "style": "Bold or Regular weight, functional."
+  },
+  "media": {
+    "images": [
+      {
+        "category": "login_background",
+        "url": "https://images.unsplash.com/photo-1595411425732-e69c1abe2763?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGdlb21ldHJpYyUyMHN3aXNzJTIwZGVzaWduJTIwYmxhY2slMjBhbmQlMjB3aGl0ZXxlbnwwfHx8fDE3ODA1Nzg0MjN8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Abstract black and white geometric pattern for login page backdrop."
+      }
+    ]
+  },
+  "accessibility_and_interactions": {
+    "hover_states": "Must significantly change contrast (e.g., black to gray-800).",
+    "focus": "2px solid black ring.",
+    "motion": "Minimal and snappy. Micro-interactions only.",
+    "test_ids": "All buttons, inputs, and table rows must have data-testid attributes."
+  },
+  "instructions_to_main_agent": [
+    "Use standard HTML + Tailwind for structural layouts, and customize Shadcn components heavily to match the Swiss Brutalist aesthetic.",
+    "Install and use 'lucide-react' or '@phosphor-icons/react' for icons.",
+    "Ensure the dashboard provides a clear visual distinction between approved items and items needing review (red highlights).",
+    "Implement threshold adjustable inputs (e.g., margin %, operational cost) at the top or in a side panel.",
+    "Implement file upload drag & drop zone clearly.",
+    "DO NOT use Inter for headings. Use Cabinet Grotesk or a suitable bold sans-serif.",
+    "DO NOT use soft drop shadows. Use hard offset shadows or pure flat design."
+  ]
+}
