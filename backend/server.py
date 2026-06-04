@@ -284,6 +284,7 @@ def create_excel_with_formatting(results_df: pd.DataFrame, output_path: str):
 def create_excel_with_approval(results_list: list, output_path: str):
     """
     Create Excel file with separate sheets for Approved and Non-Approved orders.
+    Approved items = RED background, Non-approved = NO background color.
     """
     wb = openpyxl.Workbook()
     wb.remove(wb.active)  # Remove default sheet
@@ -302,13 +303,12 @@ def create_excel_with_approval(results_list: list, output_path: str):
     pending_items = [item for item in results_list if item.get('Approval Status', 'pending') == 'pending']
     
     # Define fills and fonts
-    green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
-    red_fill = PatternFill(start_color="FFCCCC", end_color="FFCCCC", fill_type="solid")
-    yellow_fill = PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid")
+    red_fill = PatternFill(start_color="FFCCCC", end_color="FFCCCC", fill_type="solid")  # Red for approved
+    no_fill = PatternFill(fill_type=None)  # No color for non-approved
     header_fill = PatternFill(start_color="000000", end_color="000000", fill_type="solid")
     header_font = Font(bold=True, size=11, color="FFFFFF")
     
-    def write_sheet(ws, data, fill_color=None):
+    def write_sheet(ws, data, use_red_for_approved=False):
         # Write headers
         for col_idx, header in enumerate(headers, 1):
             cell = ws.cell(row=1, column=col_idx, value=header)
@@ -318,17 +318,16 @@ def create_excel_with_approval(results_list: list, output_path: str):
         
         # Write data
         for row_idx, item in enumerate(data, 2):
-            needs_review = item.get('Needs Review', False)
+            is_approved = item.get('Approval Status') == 'approved'
             
             for col_idx, header in enumerate(headers, 1):
                 value = item.get(header, '')
                 cell = ws.cell(row=row_idx, column=col_idx, value=value)
                 
-                # Apply background color
-                if fill_color:
-                    cell.fill = fill_color
-                elif needs_review:
+                # Apply red background ONLY to approved items
+                if use_red_for_approved and is_approved:
                     cell.fill = red_fill
+                # Non-approved get no fill (white/default)
         
         # Auto-adjust column widths
         for column in ws.columns:
@@ -343,20 +342,20 @@ def create_excel_with_approval(results_list: list, output_path: str):
             adjusted_width = min(max_length + 2, 50)
             ws.column_dimensions[column_letter].width = adjusted_width
     
-    # Create Approved Orders sheet
+    # Create Approved Orders sheet - RED BACKGROUND
     if approved_items:
         ws_approved = wb.create_sheet("Approved Orders")
-        write_sheet(ws_approved, approved_items, green_fill)
+        write_sheet(ws_approved, approved_items, use_red_for_approved=True)
     
-    # Create Rejected/Pending Orders sheet
+    # Create Non-Approved Orders sheet - NO COLOR
     non_approved = rejected_items + pending_items
     if non_approved:
-        ws_rejected = wb.create_sheet("Non-Approved Orders")
-        write_sheet(ws_rejected, non_approved, yellow_fill)
+        ws_non_approved = wb.create_sheet("Non-Approved Orders")
+        write_sheet(ws_non_approved, non_approved, use_red_for_approved=False)
     
-    # Create All Orders sheet
+    # Create All Orders sheet - RED for approved, NO COLOR for others
     ws_all = wb.create_sheet("All Orders", 0)  # Insert at beginning
-    write_sheet(ws_all, results_list)
+    write_sheet(ws_all, results_list, use_red_for_approved=True)
     
     wb.save(output_path)
 

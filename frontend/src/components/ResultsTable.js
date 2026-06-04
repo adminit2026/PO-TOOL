@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Warning, CheckCircle, Check, X, CheckSquare } from '@phosphor-icons/react';
+import { Warning, CheckCircle, Check, X } from '@phosphor-icons/react';
 
 const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
   const [tableData, setTableData] = useState(data || []);
@@ -16,15 +16,15 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
     );
   }
 
-  const recalculateRow = (row, newUnitCost = null, newUPSCost = null) => {
+  const recalculateRow = (row, newUnitCost = null, newUPSCost = null, newQuantity = null) => {
     const unitCost = newUnitCost !== null ? newUnitCost : row['Unit Cost'];
     const upsCost = newUPSCost !== null ? newUPSCost : row['UPS Cost'];
+    const quantity = newQuantity !== null ? newQuantity : row['Quantity'];
     
-    const productionCost = unitCost * 0.4; // Recalculate based on new unit cost
+    const productionCost = unitCost * 0.4;
     const operationalCost = row['Operational Cost'];
-    const commissionRate = 0.24; // Default FR rate
+    const commissionRate = 0.24;
     const commission = unitCost * commissionRate;
-    const quantity = row['Quantity'];
     
     const totalCostPerUnit = productionCost + upsCost + operationalCost + commission;
     const marginPerUnit = unitCost - totalCostPerUnit;
@@ -32,6 +32,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
     
     return {
       ...row,
+      'Quantity': parseInt(quantity) || 0,
       'Unit Cost': parseFloat(unitCost.toFixed(2)),
       'Production Cost': parseFloat(productionCost.toFixed(2)),
       'UPS Cost': parseFloat(upsCost.toFixed(2)),
@@ -46,10 +47,19 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
     };
   };
 
+  const handleQuantityChange = (idx, newValue) => {
+    const updatedData = [...tableData];
+    const parsedValue = parseInt(newValue) || 0;
+    updatedData[idx] = recalculateRow(updatedData[idx], null, null, parsedValue);
+    
+    setTableData(updatedData);
+    if (onDataChange) onDataChange(updatedData);
+  };
+
   const handleUnitCostChange = (idx, newValue) => {
     const updatedData = [...tableData];
     const parsedValue = parseFloat(newValue) || 0;
-    updatedData[idx] = recalculateRow(updatedData[idx], parsedValue, null);
+    updatedData[idx] = recalculateRow(updatedData[idx], parsedValue, null, null);
     
     setTableData(updatedData);
     if (onDataChange) onDataChange(updatedData);
@@ -58,17 +68,23 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
   const handleUPSCostChange = (idx, newValue) => {
     const updatedData = [...tableData];
     const parsedValue = parseFloat(newValue) || 0;
-    updatedData[idx] = recalculateRow(updatedData[idx], null, parsedValue);
+    updatedData[idx] = recalculateRow(updatedData[idx], null, parsedValue, null);
     
     setTableData(updatedData);
     if (onDataChange) onDataChange(updatedData);
   };
 
-  const handleApprovalToggle = (idx) => {
+  const handleApprove = (idx) => {
     const updatedData = [...tableData];
-    const currentStatus = updatedData[idx]['Approval Status'] || 'pending';
+    updatedData[idx]['Approval Status'] = 'approved';
     
-    updatedData[idx]['Approval Status'] = currentStatus === 'approved' ? 'rejected' : 'approved';
+    setTableData(updatedData);
+    if (onDataChange) onDataChange(updatedData);
+  };
+
+  const handleReject = (idx) => {
+    const updatedData = [...tableData];
+    updatedData[idx]['Approval Status'] = 'rejected';
     
     setTableData(updatedData);
     if (onDataChange) onDataChange(updatedData);
@@ -87,7 +103,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
               <th className="px-2 py-3 text-left text-xs font-mono font-bold uppercase tracking-wider">ASIN</th>
               <th className="px-2 py-3 text-left text-xs font-mono font-bold uppercase tracking-wider">External ID</th>
               <th className="px-2 py-3 text-left text-xs font-mono font-bold uppercase tracking-wider">Model</th>
-              <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Qty</th>
+              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-green-700">Qty (Edit)</th>
               <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-green-700">Unit Cost (Edit)</th>
               <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Prod Cost</th>
               <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-green-700">UPS Cost (Edit)</th>
@@ -98,7 +114,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
               <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Total Margin</th>
               <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Stock</th>
               <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Sales (30d)</th>
-              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-green-800">Action</th>
+              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-green-800">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -111,7 +127,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                   key={idx}
                   className={`border-b border-green-900 hover:bg-gray-900 transition-colors ${
                     needsReview ? 'bg-red-950 border-l-4 border-l-red-500' : 'bg-black'
-                  } ${approvalStatus === 'approved' ? 'border-l-4 border-l-green-500 bg-green-950' : ''} ${approvalStatus === 'rejected' ? 'border-l-4 border-l-gray-600 opacity-60' : ''}`}
+                  } ${approvalStatus === 'approved' ? 'border-l-4 border-l-blue-500 bg-blue-950' : ''} ${approvalStatus === 'rejected' ? 'border-l-4 border-l-gray-600 opacity-60 bg-gray-950' : ''}`}
                   data-testid={needsReview ? 'needs-review-row' : 'approved-row'}
                 >
                   <td className="px-2 py-2">
@@ -119,6 +135,11 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                       <div className="flex items-center gap-1 text-red-400">
                         <Warning size={16} weight="bold" />
                         <span className="text-xs font-mono font-bold">REVIEW</span>
+                      </div>
+                    ) : approvalStatus === 'approved' ? (
+                      <div className="flex items-center gap-1 text-blue-400">
+                        <CheckCircle size={16} weight="bold" />
+                        <span className="text-xs font-mono font-bold">APPROVED</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-1 text-green-400">
@@ -135,7 +156,19 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                   <td className="px-2 py-2 text-sm font-mono text-green-400">{row.ASIN}</td>
                   <td className="px-2 py-2 text-sm font-mono text-gray-300">{row['External ID']}</td>
                   <td className="px-2 py-2 text-sm text-gray-300">{row['Model Number']}</td>
-                  <td className="px-2 py-2 text-sm text-right font-mono text-white">{row.Quantity}</td>
+                  
+                  {/* Editable Quantity */}
+                  <td className="px-2 py-2 bg-green-950">
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={row['Quantity']}
+                      onChange={(e) => handleQuantityChange(idx, e.target.value)}
+                      className="w-16 px-2 py-1 border-2 border-green-500 focus:border-green-400 focus:outline-none text-sm text-center font-mono font-bold bg-black text-green-400"
+                      data-testid={`quantity-input-${idx}`}
+                    />
+                  </td>
                   
                   {/* Editable Unit Cost */}
                   <td className="px-2 py-2 bg-green-950">
@@ -197,35 +230,47 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                     {row['Sales Units (30d)'] > 0 ? row['Sales Units (30d)'] : '-'}
                   </td>
                   
-                  {/* Approve/Reject Button */}
+                  {/* Approve and Reject Buttons */}
                   <td className="px-2 py-2 text-center">
-                    {approvalStatus === 'approved' ? (
-                      <button
-                        onClick={() => handleApprovalToggle(idx)}
-                        className="bg-green-600 text-black px-4 py-2 text-xs font-mono font-bold uppercase hover:bg-green-500 transition-colors flex items-center gap-1 mx-auto"
-                        data-testid={`approve-button-${idx}`}
-                      >
-                        <Check size={14} weight="bold" />
-                        Approved
-                      </button>
-                    ) : approvalStatus === 'rejected' ? (
-                      <button
-                        onClick={() => handleApprovalToggle(idx)}
-                        className="bg-gray-600 text-white px-4 py-2 text-xs font-mono font-bold uppercase hover:bg-gray-500 transition-colors flex items-center gap-1 mx-auto"
-                        data-testid={`approve-button-${idx}`}
-                      >
-                        <X size={14} weight="bold" />
-                        Rejected
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleApprovalToggle(idx)}
-                        className="bg-green-900 border-2 border-green-500 text-green-400 px-4 py-2 text-xs font-mono font-bold uppercase hover:bg-green-800 transition-colors"
-                        data-testid={`approve-button-${idx}`}
-                      >
-                        Approve
-                      </button>
-                    )}
+                    <div className="flex gap-2 justify-center">
+                      {approvalStatus === 'approved' ? (
+                        <button
+                          onClick={() => handleReject(idx)}
+                          className="bg-blue-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-blue-500 transition-colors flex items-center gap-1"
+                          data-testid={`approved-button-${idx}`}
+                        >
+                          <Check size={14} weight="bold" />
+                          Approved
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleApprove(idx)}
+                          className="bg-green-900 border-2 border-green-500 text-green-400 px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-green-800 transition-colors"
+                          data-testid={`approve-button-${idx}`}
+                        >
+                          Approve
+                        </button>
+                      )}
+                      
+                      {approvalStatus === 'rejected' ? (
+                        <button
+                          onClick={() => handleApprove(idx)}
+                          className="bg-gray-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-gray-500 transition-colors flex items-center gap-1"
+                          data-testid={`rejected-button-${idx}`}
+                        >
+                          <X size={14} weight="bold" />
+                          Rejected
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleReject(idx)}
+                          className="bg-red-900 border-2 border-red-500 text-red-400 px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-red-800 transition-colors"
+                          data-testid={`reject-button-${idx}`}
+                        >
+                          Reject
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
