@@ -479,11 +479,12 @@ async def startup_event():
 # Include router
 app.include_router(api_router)
 
-# CORS
+# CORS - Allow frontend origin
+frontend_origin = os.environ.get('FRONTEND_ORIGIN', 'https://po-review-hub.preview.emergentagent.com')
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=[os.environ.get('REACT_APP_BACKEND_URL', '*')],
+    allow_origins=[frontend_origin, 'http://localhost:3000'],
     allow_methods=["*"],
     allow_headers=["*"],
 )
