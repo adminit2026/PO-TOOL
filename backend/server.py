@@ -1,83 +1,494 @@
-from fastapi import FastAPI, APIRouter
 from dotenv import load_dotenv
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env')
+
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, UploadFile, File, Depends
+from fastapi.responses import FileResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
-from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from typing import List, Optional
 import uuid
-from datetime import datetime, timezone
-
-
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+from datetime import datetime, timezone, timedelta
+import jwt
+import bcrypt
+from bson import ObjectId
+import secrets
+import pandas as pd
+import openpyxl
+from openpyxl.styles import PatternFill, Font, Alignment
+import json
+import shutil
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
+# Create the main app
 app = FastAPI()
-
-# Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+JWT_ALGORITHM = "HS256"
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
+# === Models ===
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class User(BaseModel):
+    id: str
+    email: str
+    name: str
+    role: str
+
+class SettingsModel(BaseModel):
+    commission_fr: float = 24.0
+    commission_es: float = 37.0
+    commission_it: float = 26.0
+    minimum_margin: float = 100.0
+    operational_cost: float = 0.5
+    shipping_cost: float = 1.0
+
+class UploadResult(BaseModel):
+    upload_id: str
+    filename: str
+    total_items: int
+    needs_review: int
+    approved: int
+    timestamp: str
+    summary: dict
+
+class HistoryItem(BaseModel):
+    upload_id: str
+    filename: str
+    total_items: int
+    needs_review: int
+    approved: int
+    timestamp: str
+
+# === Auth Helpers ===
+def hash_password(password: str) -> str:
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
+    return hashed.decode("utf-8")
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+
+def get_jwt_secret() -> str:
+    return os.environ.get("JWT_SECRET", "default_secret_key_change_in_production")
+
+def create_access_token(user_id: str, email: str) -> str:
+    payload = {
+        "sub": user_id,
+        "email": email,
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=15),
+        "type": "access"
+    }
+    return jwt.encode(payload, get_jwt_secret(), algorithm=JWT_ALGORITHM)
+
+def create_refresh_token(user_id: str) -> str:
+    payload = {
+        "sub": user_id,
+        "exp": datetime.now(timezone.utc) + timedelta(days=7),
+        "type": "refresh"
+    }
+    return jwt.encode(payload, get_jwt_secret(), algorithm=JWT_ALGORITHM)
+
+async def get_current_user(request: Request) -> dict:
+    token = request.cookies.get("access_token")
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jwt.decode(token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
+        if payload.get("type") != "access":
+            raise HTTPException(status_code=401, detail="Invalid token type")
+        user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        user["_id"] = str(user["_id"])
+        user.pop("password_hash", None)
+        return user
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+# === Cost Calculation Logic ===
+def calculate_order_costs(df: pd.DataFrame, settings: dict) -> pd.DataFrame:
+    """
+    Calculate production costs, margins, and approval status for each order line.
+    Red flag items that need review (negative margin or below minimum).
+    """
+    results = []
     
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-class StatusCheckCreate(BaseModel):
-    client_name: str
-
-# Add your routes to the router instead of directly to app
-@api_router.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
+    for idx, row in df.iterrows():
+        quantity = row.get('Quantity Requested', 0) or row.get('Expected Quantity', 0) or 0
+        unit_cost = row.get('Unit Cost', 0) or 0
+        
+        # Simple production cost estimation (in real scenario, lookup from cost db)
+        # For demo, using 40% of unit cost as base production cost
+        production_cost = unit_cost * 0.4
+        
+        # Calculate commission based on marketplace (default FR)
+        commission_rate = settings['commission_fr'] / 100
+        commission = unit_cost * commission_rate
+        
+        # Total cost per unit
+        total_cost_per_unit = production_cost + settings['shipping_cost'] + settings['operational_cost'] + commission
+        
+        # Margin calculation
+        margin_per_unit = unit_cost - total_cost_per_unit
+        margin_percentage = (margin_per_unit / unit_cost * 100) if unit_cost > 0 else 0
+        
+        # Total values
+        total_cost = total_cost_per_unit * quantity
+        total_margin = margin_per_unit * quantity
+        
+        # Determine if needs review
+        needs_review = margin_per_unit < 0 or margin_percentage < settings['minimum_margin']
+        status = "NEEDS_REVIEW" if needs_review else "APPROVED"
+        
+        result = {
+            'PO': row.get('PO', ''),
+            'Vendor': row.get('Vendor', ''),
+            'Warehouse': row.get('Warehouse', ''),
+            'ASIN': row.get('ASIN', ''),
+            'External ID': row.get('External ID', ''),
+            'Model Number': row.get('Model Number', ''),
+            'Title': row.get('Title', ''),
+            'Quantity': quantity,
+            'Unit Cost': round(unit_cost, 2),
+            'Production Cost': round(production_cost, 2),
+            'Commission': round(commission, 2),
+            'Total Cost/Unit': round(total_cost_per_unit, 2),
+            'Margin/Unit': round(margin_per_unit, 2),
+            'Margin %': round(margin_percentage, 2),
+            'Total Cost': round(total_cost, 2),
+            'Total Margin': round(total_margin, 2),
+            'Status': status,
+            'Needs Review': needs_review
+        }
+        results.append(result)
     
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
+    return pd.DataFrame(results)
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
+def create_excel_with_formatting(results_df: pd.DataFrame, output_path: str):
+    """
+    Create Excel file with conditional formatting - red background for items needing review.
+    """
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "PO Analysis"
     
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
+    # Write headers
+    headers = list(results_df.columns)
+    for col_idx, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.font = Font(bold=True, size=11)
+        cell.alignment = Alignment(horizontal='center', vertical='center')
     
-    return status_checks
+    # Define fills
+    red_fill = PatternFill(start_color="FFCCCC", end_color="FFCCCC", fill_type="solid")
+    red_font = Font(color="CC0000", bold=True)
+    
+    # Write data with formatting
+    for row_idx, row_data in enumerate(results_df.itertuples(index=False), 2):
+        needs_review = row_data[-1]  # Last column is 'Needs Review'
+        
+        for col_idx, value in enumerate(row_data[:-1], 1):  # Skip last column
+            cell = ws.cell(row=row_idx, column=col_idx, value=value)
+            
+            if needs_review:
+                cell.fill = red_fill
+                if col_idx == headers.index('Status') + 1:
+                    cell.font = red_font
+    
+    # Auto-adjust column widths
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws.column_dimensions[column_letter].width = adjusted_width
+    
+    wb.save(output_path)
 
-# Include the router in the main app
+# === Auth Endpoints ===
+@api_router.post("/auth/login")
+async def login(request: LoginRequest, response: Response):
+    email = request.email.lower()
+    user = await db.users.find_one({"email": email})
+    
+    if not user or not verify_password(request.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    user_id = str(user["_id"])
+    access_token = create_access_token(user_id, email)
+    refresh_token = create_refresh_token(user_id)
+    
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=900,
+        path="/"
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=604800,
+        path="/"
+    )
+    
+    return {
+        "id": user_id,
+        "email": user["email"],
+        "name": user.get("name", "Admin"),
+        "role": user.get("role", "admin")
+    }
+
+@api_router.get("/auth/me")
+async def get_me(request: Request):
+    user = await get_current_user(request)
+    return user
+
+@api_router.post("/auth/logout")
+async def logout(response: Response):
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    return {"message": "Logged out successfully"}
+
+# === Settings Endpoints ===
+@api_router.get("/settings")
+async def get_settings(request: Request):
+    await get_current_user(request)
+    settings = await db.settings.find_one({"type": "po_thresholds"})
+    if not settings:
+        default_settings = SettingsModel().model_dump()
+        await db.settings.insert_one({"type": "po_thresholds", **default_settings})
+        return default_settings
+    settings.pop("_id", None)
+    settings.pop("type", None)
+    return settings
+
+@api_router.post("/settings")
+async def update_settings(settings: SettingsModel, request: Request):
+    await get_current_user(request)
+    settings_dict = settings.model_dump()
+    await db.settings.update_one(
+        {"type": "po_thresholds"},
+        {"$set": settings_dict},
+        upsert=True
+    )
+    return {"message": "Settings updated successfully", "settings": settings_dict}
+
+# === Upload & Processing Endpoints ===
+@api_router.post("/upload")
+async def upload_file(request: Request, file: UploadFile = File(...)):
+    user = await get_current_user(request)
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Only Excel files are supported")
+    
+    # Get current settings
+    settings = await db.settings.find_one({"type": "po_thresholds"})
+    if not settings:
+        settings = SettingsModel().model_dump()
+    else:
+        settings.pop("_id", None)
+        settings.pop("type", None)
+    
+    # Save uploaded file
+    upload_id = str(uuid.uuid4())
+    temp_path = f"/app/uploads/{upload_id}_{file.filename}"
+    
+    with open(temp_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    try:
+        # Read Excel file
+        df = pd.read_excel(temp_path, engine='openpyxl')
+        
+        # Process and calculate costs
+        results_df = calculate_order_costs(df, settings)
+        
+        # Generate summary
+        total_items = len(results_df)
+        needs_review = results_df['Needs Review'].sum()
+        approved = total_items - needs_review
+        
+        total_cost = results_df['Total Cost'].sum()
+        total_margin = results_df['Total Margin'].sum()
+        avg_margin_pct = results_df['Margin %'].mean()
+        
+        summary = {
+            'total_cost': round(total_cost, 2),
+            'total_margin': round(total_margin, 2),
+            'avg_margin_pct': round(avg_margin_pct, 2),
+            'by_warehouse': results_df.groupby('Warehouse').agg({
+                'Total Cost': 'sum',
+                'Total Margin': 'sum'
+            }).to_dict()
+        }
+        
+        # Save results to Excel with formatting
+        output_path = f"/app/uploads/{upload_id}_processed.xlsx"
+        create_excel_with_formatting(results_df, output_path)
+        
+        # Convert numpy types to native Python (MongoDB can't encode np.int64/float64)
+        results_records = json.loads(results_df.to_json(orient='records'))
+
+        # Store in database
+        upload_record = {
+            "upload_id": upload_id,
+            "filename": file.filename,
+            "user_id": user.get('_id') or user.get('id'),
+            "total_items": total_items,
+            "needs_review": int(needs_review),
+            "approved": int(approved),
+            "summary": json.loads(json.dumps(summary, default=str)),
+            "results": results_records,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "settings_used": settings
+        }
+        await db.uploads.insert_one(upload_record)
+        
+        return {
+            "upload_id": upload_id,
+            "filename": file.filename,
+            "total_items": total_items,
+            "needs_review": int(needs_review),
+            "approved": int(approved),
+            "timestamp": upload_record['timestamp'],
+            "summary": upload_record['summary'],
+            "results": results_records
+        }
+        
+    except Exception as e:
+        logging.error(f"Error processing file: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+
+@api_router.get("/history")
+async def get_history(request: Request):
+    await get_current_user(request)
+    
+    uploads = await db.uploads.find(
+        {},
+        {"_id": 0, "upload_id": 1, "filename": 1, "total_items": 1, "needs_review": 1, "approved": 1, "timestamp": 1}
+    ).sort("timestamp", -1).limit(50).to_list(50)
+    
+    return uploads
+
+@api_router.get("/download/{upload_id}")
+async def download_file(upload_id: str, request: Request):
+    await get_current_user(request)
+    
+    file_path = f"/app/uploads/{upload_id}_processed.xlsx"
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    return FileResponse(
+        path=file_path,
+        filename=f"po_analysis_{upload_id}.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@api_router.get("/results/{upload_id}")
+async def get_results(upload_id: str, request: Request):
+    await get_current_user(request)
+    
+    upload = await db.uploads.find_one({"upload_id": upload_id}, {"_id": 0})
+    if not upload:
+        raise HTTPException(status_code=404, detail="Upload not found")
+    
+    return upload
+
+# === Admin Seeding ===
+@app.on_event("startup")
+async def startup_event():
+    # Seed admin
+    admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com")
+    admin_password = os.environ.get("ADMIN_PASSWORD", "admin123")
+    
+    existing = await db.users.find_one({"email": admin_email})
+    if existing is None:
+        hashed = hash_password(admin_password)
+        await db.users.insert_one({
+            "email": admin_email,
+            "password_hash": hashed,
+            "name": "Admin",
+            "role": "admin",
+            "created_at": datetime.now(timezone.utc)
+        })
+        logging.info(f"Admin user created: {admin_email}")
+    elif not verify_password(admin_password, existing["password_hash"]):
+        await db.users.update_one(
+            {"email": admin_email},
+            {"$set": {"password_hash": hash_password(admin_password)}}
+        )
+        logging.info(f"Admin password updated: {admin_email}")
+    
+    # Write test credentials
+    with open('/app/memory/test_credentials.md', 'w') as f:
+        f.write(f"""# Test Credentials
+
+## Admin Account
+- Email: {admin_email}
+- Password: {admin_password}
+- Role: admin
+
+## API Endpoints
+- POST /api/auth/login
+- GET /api/auth/me
+- POST /api/auth/logout
+- GET /api/settings
+- POST /api/settings
+- POST /api/upload
+- GET /api/history
+- GET /api/download/{{upload_id}}
+- GET /api/results/{{upload_id}}
+""")
+    
+    # Create indexes
+    await db.users.create_index("email", unique=True)
+    await db.uploads.create_index("upload_id")
+    await db.uploads.create_index("timestamp")
+    
+    logging.info("Application startup complete")
+
+# Include router
 app.include_router(api_router)
 
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=[os.environ.get('REACT_APP_BACKEND_URL', '*')],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Configure logging
+# Logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'

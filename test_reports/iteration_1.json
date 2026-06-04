@@ -1,0 +1,43 @@
+{
+  "summary": "Tested PO Review Hub end-to-end: backend APIs (auth, settings, upload, history, download, results, logout) and frontend flows (login, dashboard, drag&drop area, file selection, upload processing, settings panel, history panel, results table with red highlighting, Excel download, logout). 11/11 backend tests pass after fixing two critical bugs in /api/upload. All UI flows functional.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "/api/upload", "issue": "FIXED: KeyError 'id' - code referenced user['id'] but get_current_user returns '_id'. Changed to user.get('_id') or user.get('id').", "priority": "HIGH"},
+      {"endpoint": "/api/upload", "issue": "FIXED: MongoDB encoding error 'cannot encode object: np.int64(0)'. results_df.to_dict('records') leaked numpy types. Now using json.loads(results_df.to_json(orient='records')) to coerce native types.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "/api/auth/login", "issue": "No brute-force lockout implemented (system prompt playbook mentions 5-fail lockout). Not blocking but recommended."},
+      {"endpoint": "/api/upload", "issue": "Bare 'except:' inside create_excel_with_formatting column-width loop hides errors."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Dashboard results", "issues": ["Default minimum_margin=100 flags every item (including 31% margin) as NEEDS_REVIEW. With test file: 32/32 items flagged, 0 approved. Likely the default should be ~10-20 or business needs to confirm."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_po_review.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Review default minimum_margin (currently 100.0%) - flags all items as needing review even at 31%+ margin. Recommend lowering to a realistic threshold (~10-20%) or making this clearer in UI.",
+    "Consider implementing brute-force login lockout (5 fails) as per auth playbook.",
+    "Replace bare except in server.py:223 with specific exception handling."
+  ],
+  "critical_code_review_comments": [
+    "server.py line 362 (original): user['id'] mismatched get_current_user's returned dict shape (_id) - now patched.",
+    "server.py line 367 (original): inserting pandas DataFrame.to_dict('records') directly into Mongo leaks numpy.int64/float64 - now patched via JSON roundtrip.",
+    "Token TTL 15min on access cookie is fine, but no refresh endpoint exists so user gets logged out silently after 15min. Consider /api/auth/refresh.",
+    "CORS allow_origins uses REACT_APP_BACKEND_URL which is the frontend origin variable - acceptable here but naming is misleading."
+  ],
+  "updated_files": [
+    "/app/backend/server.py (fixed upload user_id + numpy encoding)",
+    "/app/backend/tests/test_po_review.py (new test suite)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@poreview.com / admin123 (from /app/memory/test_credentials.md and /app/backend/.env)",
+  "seed_data_creation": "Test uploads created in MongoDB via /api/upload using /app/uploads/test_sample_order.xlsx",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend tests at /app/backend/tests/test_po_review.py are stable. All 11 pass. Login uses httpOnly cookies via requests.Session. The minimum_margin default (100%) may need product decision - currently flags everything as needs_review.",
+  "rca of the issue": "Upload 500 had two root causes: (1) auth dict key mismatch - get_current_user transforms _id to string and pops password_hash but does NOT add 'id' key; upload accessed user['id']. (2) pandas DataFrame.to_dict('records') returns numpy scalar types (np.int64, np.float64) which motor/bson cannot serialize without raw_bson codec. Fixed by JSON-roundtripping the records to coerce to native Python types and resolving the auth key."
+}
