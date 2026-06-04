@@ -10,7 +10,7 @@ const SettingsPanel = ({ onClose }) => {
     commission_fr: 24.0,
     commission_es: 37.0,
     commission_it: 26.0,
-    minimum_margin: 100.0,
+    minimum_margin: 10.0,
     operational_cost: 0.5,
     shipping_cost: 1.0,
   });

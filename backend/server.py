@@ -50,7 +50,7 @@ class SettingsModel(BaseModel):
     commission_fr: float = 24.0
     commission_es: float = 37.0
     commission_it: float = 26.0
-    minimum_margin: float = 100.0
+    minimum_margin: float = 10.0
     operational_cost: float = 0.5
     shipping_cost: float = 1.0
 
