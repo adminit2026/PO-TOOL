@@ -4,7 +4,7 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, UploadFile, File, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, UploadFile, File, Depends, Form
 from fastapi.responses import FileResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -53,6 +53,7 @@ class SettingsModel(BaseModel):
     minimum_margin: float = 10.0
     operational_cost: float = 0.5
     shipping_cost: float = 1.0
+    ups_cost_default: float = 1.0
 
 class UploadResult(BaseModel):
     upload_id: str
@@ -62,14 +63,6 @@ class UploadResult(BaseModel):
     approved: int
     timestamp: str
     summary: dict
-
-class HistoryItem(BaseModel):
-    upload_id: str
-    filename: str
-    total_items: int
-    needs_review: int
-    approved: int
-    timestamp: str
 
 # === Auth Helpers ===
 def hash_password(password: str) -> str:
@@ -123,28 +116,74 @@ async def get_current_user(request: Request) -> dict:
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+# === Helper Functions ===
+def load_stock_data(file_path: str) -> dict:
+    """Load stock data and return dict keyed by ASIN"""
+    try:
+        df = pd.read_excel(file_path, engine='openpyxl', header=1)
+        stock_dict = {}
+        for _, row in df.iterrows():
+            asin = row.get('ASIN')
+            if pd.notna(asin):
+                stock_qty = row.get('Sellable On Hand Units', 0)
+                stock_val = row.get('Sellable On Hand Inventory', 0)
+                stock_dict[asin] = {
+                    'stock_quantity': int(stock_qty) if pd.notna(stock_qty) and stock_qty else 0,
+                    'stock_value': float(stock_val) if pd.notna(stock_val) and stock_val else 0.0
+                }
+        return stock_dict
+    except Exception as e:
+        logging.error(f"Error loading stock data: {e}")
+        return {}
+
+def load_sales_data(file_path: str) -> dict:
+    """Load sales data and return dict keyed by ASIN"""
+    try:
+        df = pd.read_excel(file_path, engine='openpyxl', header=1)
+        sales_dict = {}
+        for _, row in df.iterrows():
+            asin = row.get('ASIN')
+            if pd.notna(asin):
+                units = row.get('Dispatched units', 0)
+                revenue = row.get('Dispatched revenue', 0)
+                sales_dict[asin] = {
+                    'sales_units': int(units) if pd.notna(units) and units else 0,
+                    'sales_revenue': float(revenue) if pd.notna(revenue) and revenue else 0.0
+                }
+        return sales_dict
+    except Exception as e:
+        logging.error(f"Error loading sales data: {e}")
+        return {}
+
 # === Cost Calculation Logic ===
-def calculate_order_costs(df: pd.DataFrame, settings: dict) -> pd.DataFrame:
+def calculate_order_costs(df: pd.DataFrame, settings: dict, stock_data: dict, sales_data: dict) -> pd.DataFrame:
     """
-    Calculate production costs, margins, and approval status for each order line.
-    Red flag items that need review (negative margin or below minimum).
+    Calculate production costs, margins, and approval status with stock/sales data.
     """
     results = []
     
     for idx, row in df.iterrows():
+        asin = row.get('ASIN', '')
         quantity = row.get('Quantity Requested', 0) or row.get('Expected Quantity', 0) or 0
         unit_cost = row.get('Unit Cost', 0) or 0
         
-        # Simple production cost estimation (in real scenario, lookup from cost db)
-        # For demo, using 40% of unit cost as base production cost
+        # Get stock and sales data
+        stock_info = stock_data.get(asin, {})
+        sales_info = sales_data.get(asin, {})
+        
+        # Simple production cost estimation (40% of unit cost)
         production_cost = unit_cost * 0.4
         
         # Calculate commission based on marketplace (default FR)
         commission_rate = settings['commission_fr'] / 100
         commission = unit_cost * commission_rate
         
+        # UPS cost and operational cost per unit
+        ups_cost = settings.get('ups_cost_default', 1.0)
+        operational_cost = settings['operational_cost']
+        
         # Total cost per unit
-        total_cost_per_unit = production_cost + settings['shipping_cost'] + settings['operational_cost'] + commission
+        total_cost_per_unit = production_cost + ups_cost + operational_cost + commission
         
         # Margin calculation
         margin_per_unit = unit_cost - total_cost_per_unit
@@ -161,20 +200,24 @@ def calculate_order_costs(df: pd.DataFrame, settings: dict) -> pd.DataFrame:
         result = {
             'PO': row.get('PO', ''),
             'Vendor': row.get('Vendor', ''),
-            'Warehouse': row.get('Warehouse', ''),
-            'ASIN': row.get('ASIN', ''),
+            'Ship to Location': row.get('Warehouse', ''),
+            'ASIN': asin,
             'External ID': row.get('External ID', ''),
             'Model Number': row.get('Model Number', ''),
             'Title': row.get('Title', ''),
             'Quantity': quantity,
             'Unit Cost': round(unit_cost, 2),
             'Production Cost': round(production_cost, 2),
+            'UPS Cost': round(ups_cost, 2),
+            'Operational Cost': round(operational_cost, 2),
             'Commission': round(commission, 2),
             'Total Cost/Unit': round(total_cost_per_unit, 2),
             'Margin/Unit': round(margin_per_unit, 2),
             'Margin %': round(margin_percentage, 2),
             'Total Cost': round(total_cost, 2),
             'Total Margin': round(total_margin, 2),
+            'Stock Quantity': int(stock_info.get('stock_quantity', 0)),
+            'Sales Units (30d)': int(sales_info.get('sales_units', 0)),
             'Status': status,
             'Needs Review': needs_review
         }
@@ -184,18 +227,26 @@ def calculate_order_costs(df: pd.DataFrame, settings: dict) -> pd.DataFrame:
 
 def create_excel_with_formatting(results_df: pd.DataFrame, output_path: str):
     """
-    Create Excel file with conditional formatting - red background for items needing review.
+    Create Excel file with conditional formatting and all requested fields.
     """
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "PO Analysis"
     
     # Write headers
-    headers = list(results_df.columns)
+    headers = [
+        'PO', 'Vendor', 'Ship to Location', 'ASIN', 'External ID', 'Model Number', 'Title',
+        'Quantity', 'Unit Cost', 'Production Cost', 'UPS Cost', 'Operational Cost', 
+        'Commission', 'Total Cost/Unit', 'Margin/Unit', 'Margin %', 
+        'Total Cost', 'Total Margin', 'Stock Quantity', 'Sales Units (30d)', 'Status'
+    ]
+    
     for col_idx, header in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col_idx, value=header)
         cell.font = Font(bold=True, size=11)
         cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.fill = PatternFill(start_color="000000", end_color="000000", fill_type="solid")
+        cell.font = Font(bold=True, size=11, color="FFFFFF")
     
     # Define fills
     red_fill = PatternFill(start_color="FFCCCC", end_color="FFCCCC", fill_type="solid")
@@ -205,12 +256,14 @@ def create_excel_with_formatting(results_df: pd.DataFrame, output_path: str):
     for row_idx, row_data in enumerate(results_df.itertuples(index=False), 2):
         needs_review = row_data[-1]  # Last column is 'Needs Review'
         
-        for col_idx, value in enumerate(row_data[:-1], 1):  # Skip last column
+        # Write data (exclude 'Needs Review' column from output)
+        for col_idx, value in enumerate(row_data[:-1], 1):
             cell = ws.cell(row=row_idx, column=col_idx, value=value)
             
+            # Apply red formatting for items needing review
             if needs_review:
                 cell.fill = red_fill
-                if col_idx == headers.index('Status') + 1:
+                if col_idx == 21:  # Status column
                     cell.font = red_font
     
     # Auto-adjust column widths
@@ -241,12 +294,15 @@ async def login(request: LoginRequest, response: Response):
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
     
+    # Use secure cookies for production (HTTPS)
+    is_production = "preview.emergentagent.com" in os.environ.get('FRONTEND_ORIGIN', '')
+    
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,
-        samesite="lax",
+        secure=is_production,
+        samesite="none" if is_production else "lax",
         max_age=900,
         path="/"
     )
@@ -254,8 +310,8 @@ async def login(request: LoginRequest, response: Response):
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,
-        samesite="lax",
+        secure=is_production,
+        samesite="none" if is_production else "lax",
         max_age=604800,
         path="/"
     )
@@ -304,11 +360,16 @@ async def update_settings(settings: SettingsModel, request: Request):
 
 # === Upload & Processing Endpoints ===
 @api_router.post("/upload")
-async def upload_file(request: Request, file: UploadFile = File(...)):
+async def upload_files(
+    request: Request,
+    po_file: UploadFile = File(...),
+    stock_file: Optional[UploadFile] = File(None),
+    sales_file: Optional[UploadFile] = File(None)
+):
     user = await get_current_user(request)
     
-    if not file.filename.endswith(('.xlsx', '.xls')):
-        raise HTTPException(status_code=400, detail="Only Excel files are supported")
+    if not po_file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="PO file must be Excel format")
     
     # Get current settings
     settings = await db.settings.find_one({"type": "po_thresholds"})
@@ -318,19 +379,35 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
         settings.pop("_id", None)
         settings.pop("type", None)
     
-    # Save uploaded file
+    # Save uploaded files
     upload_id = str(uuid.uuid4())
-    temp_path = f"/app/uploads/{upload_id}_{file.filename}"
+    po_path = f"/app/uploads/{upload_id}_po.xlsx"
     
-    with open(temp_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    with open(po_path, "wb") as buffer:
+        shutil.copyfileobj(po_file.file, buffer)
+    
+    # Load stock data if provided
+    stock_data = {}
+    if stock_file and stock_file.filename:
+        stock_path = f"/app/uploads/{upload_id}_stock.xlsx"
+        with open(stock_path, "wb") as buffer:
+            shutil.copyfileobj(stock_file.file, buffer)
+        stock_data = load_stock_data(stock_path)
+    
+    # Load sales data if provided
+    sales_data = {}
+    if sales_file and sales_file.filename:
+        sales_path = f"/app/uploads/{upload_id}_sales.xlsx"
+        with open(sales_path, "wb") as buffer:
+            shutil.copyfileobj(sales_file.file, buffer)
+        sales_data = load_sales_data(sales_path)
     
     try:
-        # Read Excel file
-        df = pd.read_excel(temp_path, engine='openpyxl')
+        # Read PO Excel file
+        df = pd.read_excel(po_path, engine='openpyxl')
         
         # Process and calculate costs
-        results_df = calculate_order_costs(df, settings)
+        results_df = calculate_order_costs(df, settings, stock_data, sales_data)
         
         # Generate summary
         total_items = len(results_df)
@@ -345,10 +422,8 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
             'total_cost': round(total_cost, 2),
             'total_margin': round(total_margin, 2),
             'avg_margin_pct': round(avg_margin_pct, 2),
-            'by_warehouse': results_df.groupby('Warehouse').agg({
-                'Total Cost': 'sum',
-                'Total Margin': 'sum'
-            }).to_dict()
+            'with_stock_data': len(stock_data) > 0,
+            'with_sales_data': len(sales_data) > 0
         }
         
         # Save results to Excel with formatting
@@ -361,7 +436,7 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
         # Store in database
         upload_record = {
             "upload_id": upload_id,
-            "filename": file.filename,
+            "filename": po_file.filename,
             "user_id": user.get('_id') or user.get('id'),
             "total_items": total_items,
             "needs_review": int(needs_review),
@@ -369,18 +444,20 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
             "summary": json.loads(json.dumps(summary, default=str)),
             "results": results_records,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "settings_used": settings
+            "settings_used": settings,
+            "has_stock_data": len(stock_data) > 0,
+            "has_sales_data": len(sales_data) > 0
         }
         await db.uploads.insert_one(upload_record)
         
         return {
             "upload_id": upload_id,
-            "filename": file.filename,
+            "filename": po_file.filename,
             "total_items": total_items,
             "needs_review": int(needs_review),
             "approved": int(approved),
             "timestamp": upload_record['timestamp'],
-            "summary": upload_record['summary'],
+            "summary": summary,
             "results": results_records
         }
         
@@ -427,7 +504,7 @@ async def get_results(upload_id: str, request: Request):
 @app.on_event("startup")
 async def startup_event():
     # Seed admin
-    admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com")
+    admin_email = os.environ.get("ADMIN_EMAIL", "admin@poreview.com")
     admin_password = os.environ.get("ADMIN_PASSWORD", "admin123")
     
     existing = await db.users.find_one({"email": admin_email})
@@ -463,7 +540,7 @@ async def startup_event():
 - POST /api/auth/logout
 - GET /api/settings
 - POST /api/settings
-- POST /api/upload
+- POST /api/upload (supports multiple files: po_file, stock_file, sales_file)
 - GET /api/history
 - GET /api/download/{{upload_id}}
 - GET /api/results/{{upload_id}}
@@ -479,14 +556,17 @@ async def startup_event():
 # Include router
 app.include_router(api_router)
 
-# CORS - Allow frontend origin
+# CORS - Must be after router inclusion
 frontend_origin = os.environ.get('FRONTEND_ORIGIN', 'https://po-review-hub.preview.emergentagent.com')
+allowed_origins = [frontend_origin, 'http://localhost:3000']
+
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_origins=[frontend_origin, 'http://localhost:3000'],
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # Logging

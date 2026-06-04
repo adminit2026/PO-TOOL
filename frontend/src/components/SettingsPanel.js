@@ -13,6 +13,7 @@ const SettingsPanel = ({ onClose }) => {
     minimum_margin: 10.0,
     operational_cost: 0.5,
     shipping_cost: 1.0,
+    ups_cost_default: 1.0,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -138,7 +139,19 @@ const SettingsPanel = ({ onClose }) => {
           <h3 className="text-xs font-mono font-bold uppercase tracking-wider mb-4 text-gray-700">
             Operational Costs (per unit)
           </h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">UPS Cost (€)</label>
+              <input
+                type="number"
+                step="0.1"
+                value={settings.ups_cost_default}
+                onChange={(e) => handleChange('ups_cost_default', e.target.value)}
+                className="w-full px-4 py-2 border-2 border-gray-300 focus:border-black focus:outline-none"
+                data-testid="ups-cost-input"
+              />
+              <p className="text-xs text-gray-500 mt-1">Editable per order</p>
+            </div>
             <div>
               <label className="block text-sm font-medium mb-2">Operational Cost (€)</label>
               <input

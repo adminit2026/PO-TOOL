@@ -21,7 +21,9 @@ const API = `${BACKEND_URL}/api`;
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
-  const [file, setFile] = useState(null);
+  const [poFile, setPoFile] = useState(null);
+  const [stockFile, setStockFile] = useState(null);
+  const [salesFile, setSalesFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [results, setResults] = useState(null);
@@ -42,28 +44,42 @@ const Dashboard = () => {
     setIsDragging(false);
     const droppedFile = e.dataTransfer.files[0];
     if (droppedFile && (droppedFile.name.endsWith('.xlsx') || droppedFile.name.endsWith('.xls'))) {
-      setFile(droppedFile);
+      // Auto-detect file type based on name
+      if (droppedFile.name.toLowerCase().includes('stock') || droppedFile.name.toLowerCase().includes('inventory')) {
+        setStockFile(droppedFile);
+        toast.success('Stock file added!');
+      } else if (droppedFile.name.toLowerCase().includes('sales')) {
+        setSalesFile(droppedFile);
+        toast.success('Sales file added!');
+      } else {
+        setPoFile(droppedFile);
+        toast.success('PO file added!');
+      }
     } else {
       toast.error('Please upload an Excel file (.xlsx or .xls)');
     }
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = (e, type) => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
-      setFile(selectedFile);
+      if (type === 'po') setPoFile(selectedFile);
+      else if (type === 'stock') setStockFile(selectedFile);
+      else if (type === 'sales') setSalesFile(selectedFile);
     }
   };
 
   const handleUpload = async () => {
-    if (!file) {
-      toast.error('Please select a file first');
+    if (!poFile) {
+      toast.error('Please select a PO file first');
       return;
     }
 
     setUploading(true);
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('po_file', poFile);
+    if (stockFile) formData.append('stock_file', stockFile);
+    if (salesFile) formData.append('sales_file', salesFile);
 
     try {
       const { data } = await axios.post(`${API}/upload`, formData, {
@@ -73,8 +89,11 @@ const Dashboard = () => {
         },
       });
       setResults(data);
-      toast.success('File processed successfully!');
-      setFile(null);
+      const msg = `File processed successfully! ${stockFile ? '✓ Stock data included. ' : ''}${salesFile ? '✓ Sales data included.' : ''}`;
+      toast.success(msg);
+      setPoFile(null);
+      setStockFile(null);
+      setSalesFile(null);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to process file');
     } finally {
@@ -205,50 +224,124 @@ const Dashboard = () => {
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              className={`border-4 border-dashed p-12 transition-colors ${
+              className={`border-4 border-dashed p-8 transition-colors ${
                 isDragging ? 'border-black bg-gray-100' : 'border-gray-300 bg-gray-50'
               }`}
               data-testid="file-drop-zone"
             >
-              <div className="text-center">
-                <Upload size={64} weight="bold" className="mx-auto mb-4 text-gray-400" />
-                <p className="text-lg font-mono uppercase tracking-wider mb-2">
-                  Drag & Drop Excel File Here
+              <div className="text-center mb-6">
+                <Upload size={48} weight="bold" className="mx-auto mb-3 text-gray-400" />
+                <p className="text-base font-mono uppercase tracking-wider mb-2">
+                  Upload Excel Files
                 </p>
-                <p className="text-sm text-gray-600 mb-4">or</p>
-                <label
-                  htmlFor="file-input"
-                  className="inline-block bg-black text-white px-6 py-3 font-mono font-bold uppercase tracking-wider cursor-pointer hover:bg-gray-800 transition-colors"
-                  style={{ boxShadow: '4px 4px 0px 0px rgba(0,0,0,1)' }}
-                >
-                  Browse Files
-                </label>
-                <input
-                  id="file-input"
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleFileChange}
-                  className="hidden"
-                  data-testid="file-input"
-                />
+                <p className="text-xs text-gray-600">Drag & drop or browse files</p>
+              </div>
+
+              {/* File Upload Sections */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* PO File */}
+                <div className="border-2 border-gray-300 p-4 bg-white">
+                  <p className="text-xs font-mono font-bold uppercase tracking-wider text-gray-700 mb-2">
+                    Purchase Order *
+                  </p>
+                  <label
+                    htmlFor="po-file-input"
+                    className="block text-center bg-black text-white px-4 py-2 text-sm font-mono font-bold uppercase cursor-pointer hover:bg-gray-800 transition-colors"
+                  >
+                    {poFile ? 'Change File' : 'Browse PO'}
+                  </label>
+                  <input
+                    id="po-file-input"
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => handleFileChange(e, 'po')}
+                    className="hidden"
+                    data-testid="po-file-input"
+                  />
+                  {poFile && (
+                    <div className="mt-2">
+                      <p className="text-xs text-gray-600 truncate" title={poFile.name}>{poFile.name}</p>
+                      <p className="text-xs text-gray-500">{(poFile.size / 1024).toFixed(1)} KB</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Stock File */}
+                <div className="border-2 border-gray-300 p-4 bg-white">
+                  <p className="text-xs font-mono font-bold uppercase tracking-wider text-gray-700 mb-2">
+                    Stock/Inventory
+                  </p>
+                  <label
+                    htmlFor="stock-file-input"
+                    className="block text-center bg-gray-700 text-white px-4 py-2 text-sm font-mono font-bold uppercase cursor-pointer hover:bg-gray-600 transition-colors"
+                  >
+                    {stockFile ? 'Change File' : 'Browse Stock'}
+                  </label>
+                  <input
+                    id="stock-file-input"
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => handleFileChange(e, 'stock')}
+                    className="hidden"
+                    data-testid="stock-file-input"
+                  />
+                  {stockFile && (
+                    <div className="mt-2">
+                      <p className="text-xs text-gray-600 truncate" title={stockFile.name}>{stockFile.name}</p>
+                      <p className="text-xs text-gray-500">{(stockFile.size / 1024).toFixed(1)} KB</p>
+                    </div>
+                  )}
+                  {!stockFile && <p className="text-xs text-gray-500 mt-2">Optional</p>}
+                </div>
+
+                {/* Sales File */}
+                <div className="border-2 border-gray-300 p-4 bg-white">
+                  <p className="text-xs font-mono font-bold uppercase tracking-wider text-gray-700 mb-2">
+                    Sales Data
+                  </p>
+                  <label
+                    htmlFor="sales-file-input"
+                    className="block text-center bg-gray-700 text-white px-4 py-2 text-sm font-mono font-bold uppercase cursor-pointer hover:bg-gray-600 transition-colors"
+                  >
+                    {salesFile ? 'Change File' : 'Browse Sales'}
+                  </label>
+                  <input
+                    id="sales-file-input"
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => handleFileChange(e, 'sales')}
+                    className="hidden"
+                    data-testid="sales-file-input"
+                  />
+                  {salesFile && (
+                    <div className="mt-2">
+                      <p className="text-xs text-gray-600 truncate" title={salesFile.name}>{salesFile.name}</p>
+                      <p className="text-xs text-gray-500">{(salesFile.size / 1024).toFixed(1)} KB</p>
+                    </div>
+                  )}
+                  {!salesFile && <p className="text-xs text-gray-500 mt-2">Optional</p>}
+                </div>
               </div>
             </div>
 
-            {file && (
-              <div className="mt-6 p-4 bg-gray-100 border-2 border-gray-300 flex items-center justify-between">
+            {poFile && (
+              <div className="mt-6 p-4 bg-black text-white flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-mono uppercase tracking-wider text-gray-600">Selected File</p>
-                  <p className="font-medium" data-testid="selected-filename">{file.name}</p>
-                  <p className="text-sm text-gray-600">{(file.size / 1024).toFixed(2)} KB</p>
+                  <p className="text-xs font-mono uppercase tracking-wider text-gray-300">Ready to Process</p>
+                  <p className="font-medium">
+                    {poFile.name}
+                    {stockFile && ' + Stock'}
+                    {salesFile && ' + Sales'}
+                  </p>
                 </div>
                 <button
                   onClick={handleUpload}
                   disabled={uploading}
-                  className="bg-black text-white px-6 py-3 font-mono font-bold uppercase tracking-wider hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ boxShadow: uploading ? 'none' : '4px 4px 0px 0px rgba(0,0,0,1)' }}
+                  className="bg-white text-black px-6 py-3 font-mono font-bold uppercase tracking-wider hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ boxShadow: uploading ? 'none' : '4px 4px 0px 0px rgba(255,255,255,1)' }}
                   data-testid="upload-button"
                 >
-                  {uploading ? 'Processing...' : 'Process File'}
+                  {uploading ? 'Processing...' : 'Process Files'}
                 </button>
               </div>
             )}
@@ -299,7 +392,9 @@ const Dashboard = () => {
                 <button
                   onClick={() => {
                     setResults(null);
-                    setFile(null);
+                    setPoFile(null);
+                    setStockFile(null);
+                    setSalesFile(null);
                   }}
                   className="bg-transparent border-2 border-black px-6 py-3 font-mono font-bold uppercase tracking-wider hover:bg-gray-100 transition-colors"
                   data-testid="new-upload-button"
