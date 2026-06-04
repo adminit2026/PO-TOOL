@@ -281,6 +281,85 @@ def create_excel_with_formatting(results_df: pd.DataFrame, output_path: str):
     
     wb.save(output_path)
 
+def create_excel_with_approval(results_list: list, output_path: str):
+    """
+    Create Excel file with separate sheets for Approved and Non-Approved orders.
+    """
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)  # Remove default sheet
+    
+    # Define headers
+    headers = [
+        'PO', 'Vendor', 'Ship to Location', 'ASIN', 'External ID', 'Model Number', 'Title',
+        'Quantity', 'Unit Cost', 'Production Cost', 'UPS Cost', 'Operational Cost', 
+        'Commission', 'Total Cost/Unit', 'Margin/Unit', 'Margin %', 
+        'Total Cost', 'Total Margin', 'Stock Quantity', 'Sales Units (30d)', 'Status'
+    ]
+    
+    # Separate data by approval status
+    approved_items = [item for item in results_list if item.get('Approval Status') == 'approved']
+    rejected_items = [item for item in results_list if item.get('Approval Status') == 'rejected']
+    pending_items = [item for item in results_list if item.get('Approval Status', 'pending') == 'pending']
+    
+    # Define fills and fonts
+    green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+    red_fill = PatternFill(start_color="FFCCCC", end_color="FFCCCC", fill_type="solid")
+    yellow_fill = PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid")
+    header_fill = PatternFill(start_color="000000", end_color="000000", fill_type="solid")
+    header_font = Font(bold=True, size=11, color="FFFFFF")
+    
+    def write_sheet(ws, data, fill_color=None):
+        # Write headers
+        for col_idx, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_idx, value=header)
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.fill = header_fill
+        
+        # Write data
+        for row_idx, item in enumerate(data, 2):
+            needs_review = item.get('Needs Review', False)
+            
+            for col_idx, header in enumerate(headers, 1):
+                value = item.get(header, '')
+                cell = ws.cell(row=row_idx, column=col_idx, value=value)
+                
+                # Apply background color
+                if fill_color:
+                    cell.fill = fill_color
+                elif needs_review:
+                    cell.fill = red_fill
+        
+        # Auto-adjust column widths
+        for column in ws.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
+    
+    # Create Approved Orders sheet
+    if approved_items:
+        ws_approved = wb.create_sheet("Approved Orders")
+        write_sheet(ws_approved, approved_items, green_fill)
+    
+    # Create Rejected/Pending Orders sheet
+    non_approved = rejected_items + pending_items
+    if non_approved:
+        ws_rejected = wb.create_sheet("Non-Approved Orders")
+        write_sheet(ws_rejected, non_approved, yellow_fill)
+    
+    # Create All Orders sheet
+    ws_all = wb.create_sheet("All Orders", 0)  # Insert at beginning
+    write_sheet(ws_all, results_list)
+    
+    wb.save(output_path)
+
 # === Auth Endpoints ===
 @api_router.post("/auth/login")
 async def login(request: LoginRequest, response: Response):
@@ -476,16 +555,20 @@ async def get_history(request: Request):
     
     return uploads
 
-@api_router.get("/download/{upload_id}")
+@api_router.post("/download/{upload_id}")
 async def download_file(upload_id: str, request: Request):
     await get_current_user(request)
     
-    file_path = f"/app/uploads/{upload_id}_processed.xlsx"
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="File not found")
+    # Get the updated results from request body
+    body = await request.json()
+    updated_results = body.get('results', [])
+    
+    # Create Excel with approval status
+    output_path = f"/app/uploads/{upload_id}_final.xlsx"
+    create_excel_with_approval(updated_results, output_path)
     
     return FileResponse(
-        path=file_path,
+        path=output_path,
         filename=f"po_analysis_{upload_id}.xlsx",
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )

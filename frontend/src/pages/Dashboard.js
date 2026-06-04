@@ -103,10 +103,15 @@ const Dashboard = () => {
 
   const handleDownload = async (uploadId) => {
     try {
-      const response = await axios.get(`${API}/download/${uploadId}`, {
-        withCredentials: true,
-        responseType: 'blob',
-      });
+      // Send updated results data with approval status
+      const response = await axios.post(
+        `${API}/download/${uploadId}`,
+        { results: results.results },
+        {
+          withCredentials: true,
+          responseType: 'blob',
+        }
+      );
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -118,6 +123,14 @@ const Dashboard = () => {
     } catch (error) {
       toast.error('Failed to download file');
     }
+  };
+
+  const handleDataChange = (updatedData) => {
+    // Update results with the modified data
+    setResults(prev => ({
+      ...prev,
+      results: updatedData
+    }));
   };
 
   const handleLogout = async () => {
@@ -405,7 +418,7 @@ const Dashboard = () => {
             </div>
 
             {/* Results Table */}
-            <ResultsTable data={results.results} />
+            <ResultsTable data={results.results} onDataChange={handleDataChange} />
           </div>
         )}
       </main>
