@@ -139,13 +139,6 @@ const Login = () => {
               {loading ? 'Accessing...' : 'Login'}
             </button>
           </form>
-
-          <div className="mt-8 p-4 bg-green-950 border-2 border-green-700">
-            <p className="text-xs font-mono uppercase tracking-wider text-green-500 mb-2">Demo Credentials</p>
-            <p className="text-sm text-green-400">
-              <span className="font-mono">admin@poreview.com</span> / <span className="font-mono">admin123</span>
-            </p>
-          </div>
         </div>
       </div>
     </div>
