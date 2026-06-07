@@ -156,7 +156,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                 <tr
                   key={idx}
                   className={`border-b border-gray-200 hover:bg-gray-50 transition-colors ${
-                    needsReview ? 'bg-red-50 border-l-4 border-l-red-500' : 'bg-white'
+                    needsReview ? 'bg-red-100 border-l-4 border-l-red-400' : 'bg-white'
                   } ${approvalStatus === 'approved' ? 'border-l-4 border-l-green-600 bg-green-50' : ''} ${approvalStatus === 'rejected' ? 'border-l-4 border-l-gray-500 opacity-60 bg-gray-100' : ''}`}
                   data-testid={needsReview ? 'needs-review-row' : 'approved-row'}
                 >
@@ -339,6 +339,10 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
       </div>
     </div>
   );
+};
+
+export default ResultsTable;
+;
 };
 
 export default ResultsTable;

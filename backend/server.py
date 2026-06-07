@@ -105,11 +105,9 @@ async def get_current_user(request: Request) -> dict:
         payload = jwt.decode(token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
         if payload.get("type") != "access":
             raise HTTPException(status_code=401, detail="Invalid token type")
-        user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
+        user = await db.users.find_one({"_id": ObjectId(payload["sub"])}, {"_id": 0, "password_hash": 0})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
-        user["_id"] = str(user["_id"])
-        user.pop("password_hash", None)
         return user
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
@@ -274,7 +272,7 @@ def create_excel_with_formatting(results_df: pd.DataFrame, output_path: str):
             try:
                 if len(str(cell.value)) > max_length:
                     max_length = len(str(cell.value))
-            except:
+            except (TypeError, AttributeError):
                 pass
         adjusted_width = min(max_length + 2, 50)
         ws.column_dimensions[column_letter].width = adjusted_width
@@ -306,12 +304,8 @@ def create_excel_with_approval(results_list: list, output_path: str):
     green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")  # Green for approved
     red_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")  # Red for rejected
     yellow_fill = PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid")  # Yellow for edited cells
-    no_fill = PatternFill(fill_type=None)  # No color for non-approved
     header_fill = PatternFill(start_color="0A5F9C", end_color="0A5F9C", fill_type="solid")  # Professional blue
     header_font = Font(bold=True, size=11, color="FFFFFF")
-    
-    # Map of field names to column indices (for tracking edited cells)
-    editable_fields = ['Quantity', 'Unit Cost', 'Production Cost', 'UPS Cost', 'Box Number']
     
     def write_sheet(ws, data, color_by_status=True):
         # Write headers
@@ -362,7 +356,7 @@ def create_excel_with_approval(results_list: list, output_path: str):
                 try:
                     if len(str(cell.value)) > max_length:
                         max_length = len(str(cell.value))
-                except:
+                except (TypeError, AttributeError):
                     pass
             adjusted_width = min(max_length + 2, 50)
             ws.column_dimensions[column_letter].width = adjusted_width
@@ -424,7 +418,7 @@ def create_export_file(approved_items: list, output_path: str):
             try:
                 if len(str(cell.value)) > max_length:
                     max_length = len(str(cell.value))
-            except:
+            except (TypeError, AttributeError):
                 pass
         adjusted_width = min(max_length + 2, 50)
         ws.column_dimensions[column_letter].width = adjusted_width
@@ -465,9 +459,174 @@ def create_box_file(approved_items: list, output_path: str):
             try:
                 if len(str(cell.value)) > max_length:
                     max_length = len(str(cell.value))
-            except:
+            except (TypeError, AttributeError):
                 pass
         adjusted_width = min(max_length + 2, 30)
+        ws.column_dimensions[column_letter].width = adjusted_width
+    
+    wb.save(output_path)
+
+def load_reference_data():
+    """Load MT-AMAZON-StockProdRefs reference data for Color and Taille matching"""
+    try:
+        ref_file = '/app/backend/reference_data.xlsx'
+        df = pd.read_excel(ref_file, engine='openpyxl')
+        # Create a dictionary for quick lookup by SKU
+        reference_dict = {}
+        for _, row in df.iterrows():
+            sku = row.get('SKU', '')
+            if pd.notna(sku):
+                reference_dict[str(sku).strip()] = {
+                    'color': row.get('Color', ''),
+                    'taille': row.get('Taille', ''),
+                    'prod_or_stock': row.get('Prod or Stock', '')
+                }
+        return reference_dict
+    except Exception as e:
+        logging.error(f"Error loading reference data: {e}")
+        return {}
+
+def create_production_sheets(approved_items: list, output_path: str):
+    """
+    Create Production Sheets Excel with separate tabs for each location
+    Matches with reference file to get Color and Taille
+    """
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)  # Remove default sheet
+    
+    # Load reference data
+    reference_dict = load_reference_data()
+    
+    # Group items by location
+    location_groups = {}
+    for item in approved_items:
+        location = item.get('Ship to Location', 'Unknown')
+        if location not in location_groups:
+            location_groups[location] = []
+        
+        # Try to match with reference data
+        model = item.get('Model Number', '')
+        ref_data = reference_dict.get(str(model).strip(), {})
+        
+        # Add reference data to item
+        item_with_ref = {
+            **item,
+            'Color': ref_data.get('color', '') if pd.notna(ref_data.get('color')) else '',
+            'Taille': ref_data.get('taille', '') if pd.notna(ref_data.get('taille')) else ''
+        }
+        location_groups[location].append(item_with_ref)
+    
+    # Headers for production sheets
+    headers = ['PO', 'Vendor', 'Ship to location', 'SKU/Model', 'ASIN', 'External ID (EAN)', 
+               'Title', 'Quantity', 'Unit Cost', 'Color', 'Taille', 'Box Number']
+    
+    header_fill = PatternFill(start_color="0A5F9C", end_color="0A5F9C", fill_type="solid")
+    header_font = Font(bold=True, size=11, color="FFFFFF")
+    
+    # Create a sheet for each location
+    for location, items in sorted(location_groups.items()):
+        # Clean location name for sheet title (max 31 chars, no special chars)
+        sheet_name = location[:31].replace('[', '').replace(']', '').replace(':', '-').replace('*', '').replace('?', '').replace('/', '-').replace('\\', '-')
+        ws = wb.create_sheet(sheet_name)
+        
+        # Write headers
+        for col_idx, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_idx, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+        
+        # Write data
+        for row_idx, item in enumerate(items, 2):
+            ws.cell(row=row_idx, column=1, value=item.get('PO', ''))
+            ws.cell(row=row_idx, column=2, value=item.get('Vendor', ''))
+            ws.cell(row=row_idx, column=3, value=item.get('Ship to Location', ''))
+            ws.cell(row=row_idx, column=4, value=item.get('Model Number', ''))
+            ws.cell(row=row_idx, column=5, value=item.get('ASIN', ''))
+            ws.cell(row=row_idx, column=6, value=item.get('External ID', ''))
+            ws.cell(row=row_idx, column=7, value=item.get('Title', ''))
+            ws.cell(row=row_idx, column=8, value=item.get('Quantity', 0))
+            ws.cell(row=row_idx, column=9, value=item.get('Unit Cost', 0))
+            ws.cell(row=row_idx, column=10, value=item.get('Color', ''))
+            ws.cell(row=row_idx, column=11, value=item.get('Taille', ''))
+            ws.cell(row=row_idx, column=12, value=item.get('Box Number', ''))
+        
+        # Auto-adjust column widths
+        for column in ws.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except (TypeError, AttributeError):
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
+    
+    wb.save(output_path)
+
+def create_ean_list_csv(approved_items: list, output_path: str):
+    """
+    Create EAN List CSV with approved items
+    Columns: EAN (External ID), SKU, ASIN, Title, Quantity, Location
+    """
+    import csv
+    
+    with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
+        fieldnames = ['EAN', 'SKU', 'ASIN', 'Title', 'Quantity', 'Location']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        
+        writer.writeheader()
+        for item in approved_items:
+            writer.writerow({
+                'EAN': item.get('External ID', ''),
+                'SKU': item.get('Model Number', ''),
+                'ASIN': item.get('ASIN', ''),
+                'Title': item.get('Title', ''),
+                'Quantity': item.get('Quantity', 0),
+                'Location': item.get('Ship to Location', '')
+            })
+
+def create_packing_list(approved_items: list, output_path: str):
+    """
+    Create Packing List Excel
+    Columns: Destination (Location), Reference (SKU), QTY, Carton AMZNCC/SSCC
+    """
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Packing List"
+    
+    # Headers
+    headers = ['Destination', 'Reference', 'QTY', 'Carton AMZNCC/SSCC']
+    header_fill = PatternFill(start_color="0A5F9C", end_color="0A5F9C", fill_type="solid")
+    header_font = Font(bold=True, size=11, color="FFFFFF")
+    
+    # Write headers
+    for col_idx, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+    
+    # Write data
+    for row_idx, item in enumerate(approved_items, 2):
+        ws.cell(row=row_idx, column=1, value=item.get('Ship to Location', ''))
+        ws.cell(row=row_idx, column=2, value=item.get('Model Number', ''))
+        ws.cell(row=row_idx, column=3, value=item.get('Quantity', 0))
+        ws.cell(row=row_idx, column=4, value=item.get('Box Number', ''))  # Using Box Number as Carton AMZNCC/SSCC
+    
+    # Auto-adjust column widths
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except (TypeError, AttributeError):
+                pass
+        adjusted_width = min(max_length + 2, 40)
         ws.column_dimensions[column_letter].width = adjusted_width
     
     wb.save(output_path)
@@ -726,6 +885,78 @@ async def download_box_file(upload_id: str, request: Request):
     return FileResponse(
         path=output_path,
         filename="BOX_FR.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@api_router.post("/download-production-sheets/{upload_id}")
+async def download_production_sheets(upload_id: str, request: Request):
+    await get_current_user(request)
+    
+    # Get the updated results from request body
+    body = await request.json()
+    updated_results = body.get('results', [])
+    
+    # Filter only approved items
+    approved_items = [item for item in updated_results 
+                     if item.get('Approval Status') == 'approved']
+    
+    # Create Production Sheets file
+    from datetime import datetime
+    date_str = datetime.now().strftime('%Y%m%d')
+    output_path = f"/app/uploads/{upload_id}_production_sheets.xlsx"
+    create_production_sheets(approved_items, output_path)
+    
+    return FileResponse(
+        path=output_path,
+        filename=f"{date_str}-ProductionSheets.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@api_router.post("/download-ean-list/{upload_id}")
+async def download_ean_list(upload_id: str, request: Request):
+    await get_current_user(request)
+    
+    # Get the updated results from request body
+    body = await request.json()
+    updated_results = body.get('results', [])
+    
+    # Filter only approved items
+    approved_items = [item for item in updated_results 
+                     if item.get('Approval Status') == 'approved']
+    
+    # Create EAN List CSV
+    from datetime import datetime
+    date_str = datetime.now().strftime('%Y%m%d')
+    output_path = f"/app/uploads/{upload_id}_ean_list.csv"
+    create_ean_list_csv(approved_items, output_path)
+    
+    return FileResponse(
+        path=output_path,
+        filename=f"{date_str}-EANList.csv",
+        media_type="text/csv"
+    )
+
+@api_router.post("/download-packing-list/{upload_id}")
+async def download_packing_list(upload_id: str, request: Request):
+    await get_current_user(request)
+    
+    # Get the updated results from request body
+    body = await request.json()
+    updated_results = body.get('results', [])
+    
+    # Filter only approved items
+    approved_items = [item for item in updated_results 
+                     if item.get('Approval Status') == 'approved']
+    
+    # Create Packing List file
+    from datetime import datetime
+    date_str = datetime.now().strftime('%Y%m%d')
+    output_path = f"/app/uploads/{upload_id}_packing_list.xlsx"
+    create_packing_list(approved_items, output_path)
+    
+    return FileResponse(
+        path=output_path,
+        filename=f"{date_str}-PackingList.xlsx",
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 

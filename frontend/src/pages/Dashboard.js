@@ -213,6 +213,78 @@ const Dashboard = () => {
     }
   };
 
+  const handleDownloadProductionSheets = async (uploadId) => {
+    try {
+      const response = await axios.post(
+        `${API}/download-production-sheets/${uploadId}`,
+        { results: results.results },
+        {
+          withCredentials: true,
+          responseType: 'blob',
+        }
+      );
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      const date = new Date().toISOString().slice(0,10).replace(/-/g,'');
+      link.href = url;
+      link.setAttribute('download', `${date}-ProductionSheets.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('Production Sheets downloaded!');
+    } catch (error) {
+      toast.error('Failed to download Production Sheets');
+    }
+  };
+
+  const handleDownloadEANList = async (uploadId) => {
+    try {
+      const response = await axios.post(
+        `${API}/download-ean-list/${uploadId}`,
+        { results: results.results },
+        {
+          withCredentials: true,
+          responseType: 'blob',
+        }
+      );
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      const date = new Date().toISOString().slice(0,10).replace(/-/g,'');
+      link.href = url;
+      link.setAttribute('download', `${date}-EANList.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('EAN List downloaded!');
+    } catch (error) {
+      toast.error('Failed to download EAN List');
+    }
+  };
+
+  const handleDownloadPackingList = async (uploadId) => {
+    try {
+      const response = await axios.post(
+        `${API}/download-packing-list/${uploadId}`,
+        { results: results.results },
+        {
+          withCredentials: true,
+          responseType: 'blob',
+        }
+      );
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      const date = new Date().toISOString().slice(0,10).replace(/-/g,'');
+      link.href = url;
+      link.setAttribute('download', `${date}-PackingList.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('Packing List downloaded!');
+    } catch (error) {
+      toast.error('Failed to download Packing List');
+    }
+  };
+
   const handleDataChange = (updatedData) => {
     setResults(prev => ({
       ...prev,
@@ -552,6 +624,30 @@ const Dashboard = () => {
                 >
                   <DownloadSimple size={20} weight="bold" />
                   Download BOX
+                </button>
+                <button
+                  onClick={() => handleDownloadProductionSheets(results.upload_id)}
+                  className="bg-purple-600 text-white px-6 py-3 font-mono font-bold uppercase tracking-wider hover:bg-purple-500 border-2 border-purple-500 transition-colors flex items-center gap-2"
+                  data-testid="download-production-sheets-button"
+                >
+                  <DownloadSimple size={20} weight="bold" />
+                  Production Sheets
+                </button>
+                <button
+                  onClick={() => handleDownloadEANList(results.upload_id)}
+                  className="bg-teal-600 text-white px-6 py-3 font-mono font-bold uppercase tracking-wider hover:bg-teal-500 border-2 border-teal-500 transition-colors flex items-center gap-2"
+                  data-testid="download-ean-list-button"
+                >
+                  <DownloadSimple size={20} weight="bold" />
+                  EAN List
+                </button>
+                <button
+                  onClick={() => handleDownloadPackingList(results.upload_id)}
+                  className="bg-indigo-600 text-white px-6 py-3 font-mono font-bold uppercase tracking-wider hover:bg-indigo-500 border-2 border-indigo-500 transition-colors flex items-center gap-2"
+                  data-testid="download-packing-list-button"
+                >
+                  <DownloadSimple size={20} weight="bold" />
+                  Packing List
                 </button>
                 <button
                   onClick={() => handleDownload(results.upload_id)}
