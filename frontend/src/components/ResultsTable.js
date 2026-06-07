@@ -342,7 +342,3 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
 };
 
 export default ResultsTable;
-;
-};
-
-export default ResultsTable;
