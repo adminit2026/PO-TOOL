@@ -123,7 +123,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
     <div className="bg-white border-2 border-gray-300" data-testid="results-table">
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-blue-600 text-black sticky top-0">
+          <thead className="bg-blue-700 text-white sticky top-0">
             <tr>
               <th className="px-2 py-3 text-left text-xs font-mono font-bold uppercase tracking-wider">Status</th>
               <th className="px-2 py-3 text-left text-xs font-mono font-bold uppercase tracking-wider">PO</th>
@@ -132,10 +132,10 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
               <th className="px-2 py-3 text-left text-xs font-mono font-bold uppercase tracking-wider">ASIN</th>
               <th className="px-2 py-3 text-left text-xs font-mono font-bold uppercase tracking-wider">External ID</th>
               <th className="px-2 py-3 text-left text-xs font-mono font-bold uppercase tracking-wider">Model</th>
-              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-green-700">Qty (Edit)</th>
-              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-green-700">Unit Cost (Edit)</th>
-              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-blue-100">Prod Cost (Edit)</th>
-              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-green-700">UPS Cost (Edit)</th>
+              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-blue-100 text-blue-900">Qty (Edit)</th>
+              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-blue-100 text-blue-900">Unit Cost (Edit)</th>
+              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-blue-100 text-blue-900">Prod Cost (Edit)</th>
+              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-blue-100 text-blue-900">UPS Cost (Edit)</th>
               <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Op Cost</th>
               <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Commission</th>
               <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Margin/Unit</th>
@@ -143,8 +143,8 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
               <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Total Margin</th>
               <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Stock</th>
               <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Sales (30d)</th>
-              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-yellow-700">Box # (Edit)</th>
-              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-green-800">Actions</th>
+              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-yellow-100 text-yellow-900">Box # (Edit)</th>
+              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-blue-600 text-white">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -155,24 +155,24 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
               return (
                 <tr
                   key={idx}
-                  className={`border-b border-green-900 hover:bg-gray-900 transition-colors ${
-                    needsReview ? 'bg-red-950 border-l-4 border-l-red-500' : 'bg-white'
-                  } ${approvalStatus === 'approved' ? 'border-l-4 border-l-blue-500 bg-blue-950' : ''} ${approvalStatus === 'rejected' ? 'border-l-4 border-l-gray-600 opacity-60 bg-gray-950' : ''}`}
+                  className={`border-b border-gray-200 hover:bg-gray-50 transition-colors ${
+                    needsReview ? 'bg-red-50 border-l-4 border-l-red-500' : 'bg-white'
+                  } ${approvalStatus === 'approved' ? 'border-l-4 border-l-green-600 bg-green-50' : ''} ${approvalStatus === 'rejected' ? 'border-l-4 border-l-gray-500 opacity-60 bg-gray-100' : ''}`}
                   data-testid={needsReview ? 'needs-review-row' : 'approved-row'}
                 >
                   <td className="px-2 py-2">
                     {needsReview ? (
-                      <div className="flex items-center gap-1 text-red-400">
+                      <div className="flex items-center gap-1 text-red-600">
                         <Warning size={16} weight="bold" />
                         <span className="text-xs font-mono font-bold">REVIEW</span>
                       </div>
                     ) : approvalStatus === 'approved' ? (
-                      <div className="flex items-center gap-1 text-blue-400">
+                      <div className="flex items-center gap-1 text-green-600">
                         <CheckCircle size={16} weight="bold" />
                         <span className="text-xs font-mono font-bold">APPROVED</span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1 text-gray-900">
+                      <div className="flex items-center gap-1 text-gray-600">
                         <CheckCircle size={16} weight="bold" />
                         <span className="text-xs font-mono font-bold">OK</span>
                       </div>
@@ -195,7 +195,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                       min="0"
                       value={row['Quantity']}
                       onChange={(e) => handleQuantityChange(idx, e.target.value)}
-                      className="w-16 px-2 py-1 border-2 border-gray-300 focus:border-green-400 focus:outline-none text-sm text-center font-mono font-bold bg-white text-gray-900"
+                      className="w-16 px-2 py-1 border-2 border-blue-300 focus:border-blue-600 focus:outline-none text-sm text-center font-mono font-bold bg-white text-gray-900"
                       data-testid={`quantity-input-${idx}`}
                     />
                   </td>
@@ -208,7 +208,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                       min="0"
                       value={row['Unit Cost']}
                       onChange={(e) => handleUnitCostChange(idx, e.target.value)}
-                      className="w-20 px-2 py-1 border-2 border-gray-300 focus:border-green-400 focus:outline-none text-sm text-right font-mono font-bold bg-white text-gray-900"
+                      className="w-20 px-2 py-1 border-2 border-blue-300 focus:border-blue-600 focus:outline-none text-sm text-right font-mono font-bold bg-white text-gray-900"
                       data-testid={`unit-cost-input-${idx}`}
                     />
                     <span className="ml-1 text-sm text-gray-900">€</span>
@@ -223,10 +223,10 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                       min="0"
                       value={row['Production Cost']}
                       onChange={(e) => handleProductionCostChange(idx, e.target.value)}
-                      className="w-20 px-2 py-1 border-2 border-blue-300 focus:border-blue-500 focus:outline-none text-sm text-right font-mono font-bold bg-white text-gray-900"
+                      className="w-20 px-2 py-1 border-2 border-blue-300 focus:border-blue-600 focus:outline-none text-sm text-right font-mono font-bold bg-white text-gray-900"
                       data-testid={`prod-cost-input-${idx}`}
                     />
-                    <span className="ml-1 text-sm text-gray-700">€</span>
+                    <span className="ml-1 text-sm text-gray-900">€</span>
                   </td>
                   
                   {/* Editable UPS Cost */}
@@ -237,7 +237,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                       min="0"
                       value={row['UPS Cost']}
                       onChange={(e) => handleUPSCostChange(idx, e.target.value)}
-                      className="w-20 px-2 py-1 border-2 border-gray-300 focus:border-green-400 focus:outline-none text-sm text-right font-mono font-bold bg-white text-gray-900"
+                      className="w-20 px-2 py-1 border-2 border-blue-300 focus:border-blue-600 focus:outline-none text-sm text-right font-mono font-bold bg-white text-gray-900"
                       data-testid={`ups-cost-input-${idx}`}
                     />
                     <span className="ml-1 text-sm text-gray-900">€</span>
@@ -247,21 +247,21 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                   <td className="px-2 py-2 text-sm text-right font-mono text-gray-700">€{row.Commission}</td>
                   <td
                     className={`px-2 py-2 text-sm text-right font-mono font-bold ${
-                      row['Margin/Unit'] < 0 ? 'text-red-400' : 'text-gray-900'
+                      row['Margin/Unit'] < 0 ? 'text-red-600' : 'text-gray-900'
                     }`}
                   >
                     €{row['Margin/Unit']}
                   </td>
                   <td
                     className={`px-2 py-2 text-sm text-right font-mono font-bold ${
-                      row['Margin %'] < 0 ? 'text-red-400' : 'text-gray-900'
+                      row['Margin %'] < 0 ? 'text-red-600' : 'text-gray-900'
                     }`}
                   >
                     {row['Margin %']}%
                   </td>
                   <td
                     className={`px-2 py-2 text-sm text-right font-mono font-bold ${
-                      row['Total Margin'] < 0 ? 'text-red-400' : 'text-gray-900'
+                      row['Total Margin'] < 0 ? 'text-red-600' : 'text-gray-900'
                     }`}
                   >
                     €{row['Total Margin']}
@@ -274,18 +274,18 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                   </td>
                   
                   {/* Editable Box Number - only for approved items */}
-                  <td className="px-2 py-2 bg-yellow-950">
+                  <td className="px-2 py-2 bg-yellow-50">
                     {approvalStatus === 'approved' ? (
                       <input
                         type="text"
                         value={row['Box Number'] || ''}
                         onChange={(e) => handleBoxNumberChange(idx, e.target.value)}
                         placeholder="Box #"
-                        className="w-16 px-2 py-1 border-2 border-yellow-500 focus:border-yellow-400 focus:outline-none text-sm text-center font-mono font-bold bg-white text-yellow-400"
+                        className="w-16 px-2 py-1 border-2 border-yellow-500 focus:border-yellow-600 focus:outline-none text-sm text-center font-mono font-bold bg-white text-gray-900"
                         data-testid={`box-number-input-${idx}`}
                       />
                     ) : (
-                      <span className="text-gray-600 text-xs">-</span>
+                      <span className="text-gray-400 text-xs">-</span>
                     )}
                   </td>
                   
@@ -295,7 +295,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                       {approvalStatus === 'approved' ? (
                         <button
                           onClick={() => handleReject(idx)}
-                          className="bg-blue-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-blue-500 transition-colors flex items-center gap-1"
+                          className="bg-green-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-green-700 transition-colors flex items-center gap-1"
                           data-testid={`approved-button-${idx}`}
                         >
                           <Check size={14} weight="bold" />
@@ -304,7 +304,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                       ) : (
                         <button
                           onClick={() => handleApprove(idx)}
-                          className="bg-blue-100 border-2 border-gray-300 text-gray-900 px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-green-800 transition-colors"
+                          className="bg-white border-2 border-gray-300 text-gray-900 px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-green-600 hover:text-white hover:border-green-600 transition-colors"
                           data-testid={`approve-button-${idx}`}
                         >
                           Approve
@@ -314,7 +314,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                       {approvalStatus === 'rejected' ? (
                         <button
                           onClick={() => handleApprove(idx)}
-                          className="bg-gray-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-gray-500 transition-colors flex items-center gap-1"
+                          className="bg-gray-500 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-gray-600 transition-colors flex items-center gap-1"
                           data-testid={`rejected-button-${idx}`}
                         >
                           <X size={14} weight="bold" />
@@ -323,7 +323,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                       ) : (
                         <button
                           onClick={() => handleReject(idx)}
-                          className="bg-red-900 border-2 border-red-500 text-red-400 px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-red-800 transition-colors"
+                          className="bg-white border-2 border-red-500 text-red-600 px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-red-600 hover:text-white transition-colors"
                           data-testid={`reject-button-${idx}`}
                         >
                           Reject
