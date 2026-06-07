@@ -22,6 +22,9 @@ import { toast } from 'sonner';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Constants
+const BYTES_PER_KB = 1024;
+
 const Dashboard = () => {
   const { user, logout } = useAuth();
   const [poFile, setPoFile] = useState(null);
@@ -457,7 +460,7 @@ const Dashboard = () => {
                   {poFile && (
                     <div className="mt-2">
                       <p className="text-xs text-blue-600 truncate" title={poFile.name}>{poFile.name}</p>
-                      <p className="text-xs text-gray-500">{(poFile.size / 1024).toFixed(1)} KB</p>
+                      <p className="text-xs text-gray-500">{(poFile.size / BYTES_PER_KB).toFixed(1)} KB</p>
                     </div>
                   )}
                 </div>
@@ -484,7 +487,7 @@ const Dashboard = () => {
                   {stockFile && (
                     <div className="mt-2">
                       <p className="text-xs text-blue-600 truncate" title={stockFile.name}>{stockFile.name}</p>
-                      <p className="text-xs text-gray-500">{(stockFile.size / 1024).toFixed(1)} KB</p>
+                      <p className="text-xs text-gray-500">{(stockFile.size / BYTES_PER_KB).toFixed(1)} KB</p>
                     </div>
                   )}
                   {!stockFile && <p className="text-xs text-gray-600 mt-2">Optional</p>}
@@ -512,7 +515,7 @@ const Dashboard = () => {
                   {salesFile && (
                     <div className="mt-2">
                       <p className="text-xs text-blue-600 truncate" title={salesFile.name}>{salesFile.name}</p>
-                      <p className="text-xs text-gray-500">{(salesFile.size / 1024).toFixed(1)} KB</p>
+                      <p className="text-xs text-gray-500">{(salesFile.size / BYTES_PER_KB).toFixed(1)} KB</p>
                     </div>
                   )}
                   {!salesFile && <p className="text-xs text-gray-600 mt-2">Optional</p>}
@@ -595,8 +598,8 @@ const Dashboard = () => {
                 <h3 className="text-lg font-bold text-gray-900 mb-2 font-mono uppercase tracking-wider">Margin by Location (Approved Items)</h3>
                 <p className="text-xs text-gray-600 mb-4">Real-time margin updates when items are approved</p>
                 <div className="space-y-3">
-                  {metrics.locationStats.map((loc, idx) => (
-                    <div key={idx} className="flex justify-between items-center p-3 bg-gray-50 border border-gray-200">
+                  {metrics.locationStats.map((loc) => (
+                    <div key={loc.location} className="flex justify-between items-center p-3 bg-gray-50 border border-gray-200">
                       <div className="flex-1">
                         <p className="font-semibold text-gray-900 text-sm">{loc.location}</p>
                         <p className="text-xs text-gray-600">{loc.items} approved items</p>

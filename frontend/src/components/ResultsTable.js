@@ -151,10 +151,12 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
             {tableData.map((row, idx) => {
               const needsReview = row['Needs Review'];
               const approvalStatus = row['Approval Status'] || 'pending';
+              // Use unique combination of External ID and index as key
+              const uniqueKey = `${row['External ID']}-${row['Model Number']}-${idx}`;
               
               return (
                 <tr
-                  key={idx}
+                  key={uniqueKey}
                   className={`border-b border-gray-200 hover:bg-gray-50 transition-colors ${
                     needsReview ? 'bg-red-100 border-l-4 border-l-red-400' : 'bg-white'
                   } ${approvalStatus === 'approved' ? 'border-l-4 border-l-green-600 bg-green-50' : ''} ${approvalStatus === 'rejected' ? 'border-l-4 border-l-gray-500 opacity-60 bg-gray-100' : ''}`}
