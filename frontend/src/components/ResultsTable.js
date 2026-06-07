@@ -10,18 +10,18 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
 
   if (!tableData || tableData.length === 0) {
     return (
-      <div className="bg-black border-2 border-green-500 p-8 text-center">
-        <p className="text-green-500 font-mono">No data to display</p>
+      <div className="bg-white border-2 border-gray-300 p-8 text-center">
+        <p className="text-gray-700 font-mono">No data to display</p>
       </div>
     );
   }
 
-  const recalculateRow = (row, newUnitCost = null, newUPSCost = null, newQuantity = null) => {
+  const recalculateRow = (row, newUnitCost = null, newUPSCost = null, newQuantity = null, newProductionCost = null) => {
     const unitCost = newUnitCost !== null ? newUnitCost : row['Unit Cost'];
     const upsCost = newUPSCost !== null ? newUPSCost : row['UPS Cost'];
     const quantity = newQuantity !== null ? newQuantity : row['Quantity'];
+    const productionCost = newProductionCost !== null ? newProductionCost : (row['Production Cost'] || unitCost * 0.4);
     
-    const productionCost = unitCost * 0.4;
     const operationalCost = row['Operational Cost'];
     const commissionRate = 0.24;
     const commission = unitCost * commissionRate;
@@ -29,6 +29,15 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
     const totalCostPerUnit = productionCost + upsCost + operationalCost + commission;
     const marginPerUnit = unitCost - totalCostPerUnit;
     const marginPercentage = (marginPerUnit / unitCost * 100) || 0;
+    
+    // Track if fields were edited
+    const edited = {
+      ...row.edited,
+      quantity: newQuantity !== null || row.edited?.quantity,
+      unitCost: newUnitCost !== null || row.edited?.unitCost,
+      upsCost: newUPSCost !== null || row.edited?.upsCost,
+      productionCost: newProductionCost !== null || row.edited?.productionCost
+    };
     
     return {
       ...row,
@@ -43,14 +52,15 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
       'Total Cost': parseFloat((totalCostPerUnit * quantity).toFixed(2)),
       'Total Margin': parseFloat((marginPerUnit * quantity).toFixed(2)),
       'Needs Review': marginPerUnit < 0 || marginPercentage < 10,
-      'Status': (marginPerUnit < 0 || marginPercentage < 10) ? 'NEEDS_REVIEW' : 'APPROVED'
+      'Status': (marginPerUnit < 0 || marginPercentage < 10) ? 'NEEDS_REVIEW' : 'APPROVED',
+      'edited': edited
     };
   };
 
   const handleQuantityChange = (idx, newValue) => {
     const updatedData = [...tableData];
     const parsedValue = parseInt(newValue) || 0;
-    updatedData[idx] = recalculateRow(updatedData[idx], null, null, parsedValue);
+    updatedData[idx] = recalculateRow(updatedData[idx], null, null, parsedValue, null);
     
     setTableData(updatedData);
     if (onDataChange) onDataChange(updatedData);
@@ -59,7 +69,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
   const handleUnitCostChange = (idx, newValue) => {
     const updatedData = [...tableData];
     const parsedValue = parseFloat(newValue) || 0;
-    updatedData[idx] = recalculateRow(updatedData[idx], parsedValue, null, null);
+    updatedData[idx] = recalculateRow(updatedData[idx], parsedValue, null, null, null);
     
     setTableData(updatedData);
     if (onDataChange) onDataChange(updatedData);
@@ -68,7 +78,16 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
   const handleUPSCostChange = (idx, newValue) => {
     const updatedData = [...tableData];
     const parsedValue = parseFloat(newValue) || 0;
-    updatedData[idx] = recalculateRow(updatedData[idx], null, parsedValue, null);
+    updatedData[idx] = recalculateRow(updatedData[idx], null, parsedValue, null, null);
+    
+    setTableData(updatedData);
+    if (onDataChange) onDataChange(updatedData);
+  };
+
+  const handleProductionCostChange = (idx, newValue) => {
+    const updatedData = [...tableData];
+    const parsedValue = parseFloat(newValue) || 0;
+    updatedData[idx] = recalculateRow(updatedData[idx], null, null, null, parsedValue);
     
     setTableData(updatedData);
     if (onDataChange) onDataChange(updatedData);
@@ -77,6 +96,8 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
   const handleBoxNumberChange = (idx, newValue) => {
     const updatedData = [...tableData];
     updatedData[idx]['Box Number'] = newValue;
+    if (!updatedData[idx].edited) updatedData[idx].edited = {};
+    updatedData[idx].edited.boxNumber = true;
     
     setTableData(updatedData);
     if (onDataChange) onDataChange(updatedData);
@@ -99,10 +120,10 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
   };
 
   return (
-    <div className="bg-black border-2 border-green-500" data-testid="results-table">
+    <div className="bg-white border-2 border-gray-300" data-testid="results-table">
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-green-600 text-black sticky top-0">
+          <thead className="bg-blue-600 text-black sticky top-0">
             <tr>
               <th className="px-2 py-3 text-left text-xs font-mono font-bold uppercase tracking-wider">Status</th>
               <th className="px-2 py-3 text-left text-xs font-mono font-bold uppercase tracking-wider">PO</th>
@@ -113,7 +134,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
               <th className="px-2 py-3 text-left text-xs font-mono font-bold uppercase tracking-wider">Model</th>
               <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-green-700">Qty (Edit)</th>
               <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-green-700">Unit Cost (Edit)</th>
-              <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Prod Cost</th>
+              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-blue-100">Prod Cost (Edit)</th>
               <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-green-700">UPS Cost (Edit)</th>
               <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Op Cost</th>
               <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Commission</th>
@@ -135,7 +156,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                 <tr
                   key={idx}
                   className={`border-b border-green-900 hover:bg-gray-900 transition-colors ${
-                    needsReview ? 'bg-red-950 border-l-4 border-l-red-500' : 'bg-black'
+                    needsReview ? 'bg-red-950 border-l-4 border-l-red-500' : 'bg-white'
                   } ${approvalStatus === 'approved' ? 'border-l-4 border-l-blue-500 bg-blue-950' : ''} ${approvalStatus === 'rejected' ? 'border-l-4 border-l-gray-600 opacity-60 bg-gray-950' : ''}`}
                   data-testid={needsReview ? 'needs-review-row' : 'approved-row'}
                 >
@@ -151,91 +172,104 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                         <span className="text-xs font-mono font-bold">APPROVED</span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1 text-green-400">
+                      <div className="flex items-center gap-1 text-gray-900">
                         <CheckCircle size={16} weight="bold" />
                         <span className="text-xs font-mono font-bold">OK</span>
                       </div>
                     )}
                   </td>
-                  <td className="px-2 py-2 text-sm font-mono text-green-400">{row.PO}</td>
-                  <td className="px-2 py-2 text-sm font-mono text-green-400">{row.Vendor}</td>
-                  <td className="px-2 py-2 text-sm max-w-xs truncate text-gray-300" title={row['Ship to Location']}>
+                  <td className="px-2 py-2 text-sm font-mono text-gray-900">{row.PO}</td>
+                  <td className="px-2 py-2 text-sm font-mono text-gray-900">{row.Vendor}</td>
+                  <td className="px-2 py-2 text-sm max-w-xs truncate text-gray-700" title={row['Ship to Location']}>
                     {row['Ship to Location']}
                   </td>
-                  <td className="px-2 py-2 text-sm font-mono text-green-400">{row.ASIN}</td>
-                  <td className="px-2 py-2 text-sm font-mono text-gray-300">{row['External ID']}</td>
-                  <td className="px-2 py-2 text-sm text-gray-300">{row['Model Number']}</td>
+                  <td className="px-2 py-2 text-sm font-mono text-gray-900">{row.ASIN}</td>
+                  <td className="px-2 py-2 text-sm font-mono text-gray-700">{row['External ID']}</td>
+                  <td className="px-2 py-2 text-sm text-gray-700">{row['Model Number']}</td>
                   
                   {/* Editable Quantity */}
-                  <td className="px-2 py-2 bg-green-950">
+                  <td className="px-2 py-2 bg-blue-50">
                     <input
                       type="number"
                       step="1"
                       min="0"
                       value={row['Quantity']}
                       onChange={(e) => handleQuantityChange(idx, e.target.value)}
-                      className="w-16 px-2 py-1 border-2 border-green-500 focus:border-green-400 focus:outline-none text-sm text-center font-mono font-bold bg-black text-green-400"
+                      className="w-16 px-2 py-1 border-2 border-gray-300 focus:border-green-400 focus:outline-none text-sm text-center font-mono font-bold bg-white text-gray-900"
                       data-testid={`quantity-input-${idx}`}
                     />
                   </td>
                   
                   {/* Editable Unit Cost */}
-                  <td className="px-2 py-2 bg-green-950">
+                  <td className="px-2 py-2 bg-blue-50">
                     <input
                       type="number"
                       step="0.1"
                       min="0"
                       value={row['Unit Cost']}
                       onChange={(e) => handleUnitCostChange(idx, e.target.value)}
-                      className="w-20 px-2 py-1 border-2 border-green-500 focus:border-green-400 focus:outline-none text-sm text-right font-mono font-bold bg-black text-green-400"
+                      className="w-20 px-2 py-1 border-2 border-gray-300 focus:border-green-400 focus:outline-none text-sm text-right font-mono font-bold bg-white text-gray-900"
                       data-testid={`unit-cost-input-${idx}`}
                     />
-                    <span className="ml-1 text-sm text-green-400">€</span>
+                    <span className="ml-1 text-sm text-gray-900">€</span>
                   </td>
                   
-                  <td className="px-2 py-2 text-sm text-right font-mono text-gray-300">€{row['Production Cost']}</td>
+                  
+                  {/* Editable Production Cost */}
+                  <td className="px-2 py-2 bg-blue-50">
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={row['Production Cost']}
+                      onChange={(e) => handleProductionCostChange(idx, e.target.value)}
+                      className="w-20 px-2 py-1 border-2 border-blue-300 focus:border-blue-500 focus:outline-none text-sm text-right font-mono font-bold bg-white text-gray-900"
+                      data-testid={`prod-cost-input-${idx}`}
+                    />
+                    <span className="ml-1 text-sm text-gray-700">€</span>
+                  </td>
                   
                   {/* Editable UPS Cost */}
-                  <td className="px-2 py-2 bg-green-950">
+                  <td className="px-2 py-2 bg-blue-50">
                     <input
                       type="number"
                       step="0.1"
                       min="0"
                       value={row['UPS Cost']}
                       onChange={(e) => handleUPSCostChange(idx, e.target.value)}
-                      className="w-20 px-2 py-1 border-2 border-green-500 focus:border-green-400 focus:outline-none text-sm text-right font-mono font-bold bg-black text-green-400"
+                      className="w-20 px-2 py-1 border-2 border-gray-300 focus:border-green-400 focus:outline-none text-sm text-right font-mono font-bold bg-white text-gray-900"
                       data-testid={`ups-cost-input-${idx}`}
                     />
-                    <span className="ml-1 text-sm text-green-400">€</span>
+                    <span className="ml-1 text-sm text-gray-900">€</span>
                   </td>
                   
-                  <td className="px-2 py-2 text-sm text-right font-mono text-gray-300">€{row['Operational Cost']}</td>
-                  <td className="px-2 py-2 text-sm text-right font-mono text-gray-300">€{row.Commission}</td>
+                  <td className="px-2 py-2 text-sm text-right font-mono text-gray-700">€{row['Operational Cost']}</td>
+                  <td className="px-2 py-2 text-sm text-right font-mono text-gray-700">€{row.Commission}</td>
                   <td
                     className={`px-2 py-2 text-sm text-right font-mono font-bold ${
-                      row['Margin/Unit'] < 0 ? 'text-red-400' : 'text-green-400'
+                      row['Margin/Unit'] < 0 ? 'text-red-400' : 'text-gray-900'
                     }`}
                   >
                     €{row['Margin/Unit']}
                   </td>
                   <td
                     className={`px-2 py-2 text-sm text-right font-mono font-bold ${
-                      row['Margin %'] < 0 ? 'text-red-400' : 'text-green-400'
+                      row['Margin %'] < 0 ? 'text-red-400' : 'text-gray-900'
                     }`}
                   >
                     {row['Margin %']}%
                   </td>
                   <td
                     className={`px-2 py-2 text-sm text-right font-mono font-bold ${
-                      row['Total Margin'] < 0 ? 'text-red-400' : 'text-green-400'
+                      row['Total Margin'] < 0 ? 'text-red-400' : 'text-gray-900'
                     }`}
                   >
                     €{row['Total Margin']}
                   </td>
-                  <td className="px-2 py-2 text-sm text-right font-mono text-gray-400">
+                  <td className="px-2 py-2 text-sm text-right font-mono text-gray-600">
                     {row['Stock Quantity'] > 0 ? row['Stock Quantity'] : '-'}
                   </td>
-                  <td className="px-2 py-2 text-sm text-right font-mono text-gray-400">
+                  <td className="px-2 py-2 text-sm text-right font-mono text-gray-600">
                     {row['Sales Units (30d)'] > 0 ? row['Sales Units (30d)'] : '-'}
                   </td>
                   
@@ -247,7 +281,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                         value={row['Box Number'] || ''}
                         onChange={(e) => handleBoxNumberChange(idx, e.target.value)}
                         placeholder="Box #"
-                        className="w-16 px-2 py-1 border-2 border-yellow-500 focus:border-yellow-400 focus:outline-none text-sm text-center font-mono font-bold bg-black text-yellow-400"
+                        className="w-16 px-2 py-1 border-2 border-yellow-500 focus:border-yellow-400 focus:outline-none text-sm text-center font-mono font-bold bg-white text-yellow-400"
                         data-testid={`box-number-input-${idx}`}
                       />
                     ) : (
@@ -270,7 +304,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                       ) : (
                         <button
                           onClick={() => handleApprove(idx)}
-                          className="bg-green-900 border-2 border-green-500 text-green-400 px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-green-800 transition-colors"
+                          className="bg-blue-100 border-2 border-gray-300 text-gray-900 px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-green-800 transition-colors"
                           data-testid={`approve-button-${idx}`}
                         >
                           Approve

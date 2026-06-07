@@ -302,13 +302,18 @@ def create_excel_with_approval(results_list: list, output_path: str):
     rejected_items = [item for item in results_list if item.get('Approval Status') == 'rejected']
     pending_items = [item for item in results_list if item.get('Approval Status', 'pending') == 'pending']
     
-    # Define fills and fonts
-    red_fill = PatternFill(start_color="FFCCCC", end_color="FFCCCC", fill_type="solid")  # Red for approved
+    # Define fills and fonts  
+    green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")  # Green for approved
+    red_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")  # Red for rejected
+    yellow_fill = PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid")  # Yellow for edited cells
     no_fill = PatternFill(fill_type=None)  # No color for non-approved
-    header_fill = PatternFill(start_color="000000", end_color="000000", fill_type="solid")
+    header_fill = PatternFill(start_color="0A5F9C", end_color="0A5F9C", fill_type="solid")  # Professional blue
     header_font = Font(bold=True, size=11, color="FFFFFF")
     
-    def write_sheet(ws, data, use_red_for_approved=False):
+    # Map of field names to column indices (for tracking edited cells)
+    editable_fields = ['Quantity', 'Unit Cost', 'Production Cost', 'UPS Cost', 'Box Number']
+    
+    def write_sheet(ws, data, color_by_status=True):
         # Write headers
         for col_idx, header in enumerate(headers, 1):
             cell = ws.cell(row=1, column=col_idx, value=header)
@@ -319,15 +324,35 @@ def create_excel_with_approval(results_list: list, output_path: str):
         # Write data
         for row_idx, item in enumerate(data, 2):
             is_approved = item.get('Approval Status') == 'approved'
+            is_rejected = item.get('Approval Status') == 'rejected'
+            edited_fields = item.get('edited', {})
             
             for col_idx, header in enumerate(headers, 1):
                 value = item.get(header, '')
                 cell = ws.cell(row=row_idx, column=col_idx, value=value)
                 
-                # Apply red background ONLY to approved items
-                if use_red_for_approved and is_approved:
-                    cell.fill = red_fill
-                # Non-approved get no fill (white/default)
+                # Determine cell color
+                if color_by_status:
+                    # Check if this specific cell was edited
+                    field_edited = False
+                    if header == 'Quantity' and edited_fields.get('quantity'):
+                        field_edited = True
+                    elif header == 'Unit Cost' and edited_fields.get('unitCost'):
+                        field_edited = True
+                    elif header == 'Production Cost' and edited_fields.get('productionCost'):
+                        field_edited = True
+                    elif header == 'UPS Cost' and edited_fields.get('upsCost'):
+                        field_edited = True
+                    elif header == 'Box Number' and edited_fields.get('boxNumber'):
+                        field_edited = True
+                    
+                    # Apply colors: Yellow for edited cells, Green for approved rows, Red for rejected rows
+                    if field_edited:
+                        cell.fill = yellow_fill
+                    elif is_approved:
+                        cell.fill = green_fill
+                    elif is_rejected:
+                        cell.fill = red_fill
         
         # Auto-adjust column widths
         for column in ws.columns:
@@ -342,20 +367,24 @@ def create_excel_with_approval(results_list: list, output_path: str):
             adjusted_width = min(max_length + 2, 50)
             ws.column_dimensions[column_letter].width = adjusted_width
     
-    # Create Approved Orders sheet - RED BACKGROUND
+    # Create Approved Orders sheet - GREEN with YELLOW for edited cells
     if approved_items:
         ws_approved = wb.create_sheet("Approved Orders")
-        write_sheet(ws_approved, approved_items, use_red_for_approved=True)
+        write_sheet(ws_approved, approved_items, color_by_status=True)
     
-    # Create Non-Approved Orders sheet - NO COLOR
-    non_approved = rejected_items + pending_items
-    if non_approved:
-        ws_non_approved = wb.create_sheet("Non-Approved Orders")
-        write_sheet(ws_non_approved, non_approved, use_red_for_approved=False)
+    # Create Rejected Orders sheet - RED
+    if rejected_items:
+        ws_rejected = wb.create_sheet("Rejected Orders")
+        write_sheet(ws_rejected, rejected_items, color_by_status=True)
     
-    # Create All Orders sheet - RED for approved, NO COLOR for others
+    # Create Non-Approved (Pending) Orders sheet - NO COLOR
+    if pending_items:
+        ws_pending = wb.create_sheet("Pending Orders")
+        write_sheet(ws_pending, pending_items, color_by_status=False)
+    
+    # Create All Orders sheet - Mixed colors
     ws_all = wb.create_sheet("All Orders", 0)  # Insert at beginning
-    write_sheet(ws_all, results_list, use_red_for_approved=True)
+    write_sheet(ws_all, results_list, color_by_status=True)
     
     wb.save(output_path)
 
