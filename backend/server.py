@@ -359,6 +359,91 @@ def create_excel_with_approval(results_list: list, output_path: str):
     
     wb.save(output_path)
 
+def create_export_file(approved_items: list, output_path: str):
+    """
+    Create EXPORT file with approved items in specific format.
+    Columns: PO, Vendor, Ship to location, Model Number, ASIN, External ID, Title, Availability
+    """
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "POout"
+    
+    # Headers
+    headers = ['PO', 'Vendor', 'Ship to location', 'Model Number', 'ASIN', 'External ID', 'Title', 'Availability']
+    
+    # Write headers
+    for col_idx, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.font = Font(bold=True)
+    
+    # Write data
+    for row_idx, item in enumerate(approved_items, 2):
+        ws.cell(row=row_idx, column=1, value=item.get('PO', ''))
+        ws.cell(row=row_idx, column=2, value=item.get('Vendor', ''))
+        ws.cell(row=row_idx, column=3, value=item.get('Ship to Location', ''))
+        ws.cell(row=row_idx, column=4, value=item.get('Model Number', ''))
+        ws.cell(row=row_idx, column=5, value=item.get('ASIN', ''))
+        ws.cell(row=row_idx, column=6, value=item.get('External ID', ''))
+        ws.cell(row=row_idx, column=7, value=item.get('Title', ''))
+        ws.cell(row=row_idx, column=8, value='Accepted: In stock')
+    
+    # Auto-adjust column widths
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws.column_dimensions[column_letter].width = adjusted_width
+    
+    wb.save(output_path)
+
+def create_box_file(approved_items: list, output_path: str):
+    """
+    Create BOX file with box numbers.
+    Columns: PO, Vendor, Ship to location, Model Number, Expected Quantity, BOX
+    """
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "POout"
+    
+    # Headers
+    headers = ['PO', 'Vendor', 'Ship to location', 'Model Number', 'Expected Quantity', 'BOX']
+    
+    # Write headers
+    for col_idx, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.font = Font(bold=True)
+    
+    # Write data
+    for row_idx, item in enumerate(approved_items, 2):
+        ws.cell(row=row_idx, column=1, value=item.get('PO', ''))
+        ws.cell(row=row_idx, column=2, value=item.get('Vendor', ''))
+        ws.cell(row=row_idx, column=3, value=item.get('Ship to Location', ''))
+        ws.cell(row=row_idx, column=4, value=item.get('Model Number', ''))
+        ws.cell(row=row_idx, column=5, value=item.get('Quantity', 0))
+        ws.cell(row=row_idx, column=6, value=item.get('Box Number', ''))
+    
+    # Auto-adjust column widths
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 30)
+        ws.column_dimensions[column_letter].width = adjusted_width
+    
+    wb.save(output_path)
+
+
 # === Auth Endpoints ===
 @api_router.post("/auth/login")
 async def login(request: LoginRequest, response: Response):
@@ -569,6 +654,49 @@ async def download_file(upload_id: str, request: Request):
     return FileResponse(
         path=output_path,
         filename=f"po_analysis_{upload_id}.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@api_router.post("/download-export/{upload_id}")
+async def download_export_file(upload_id: str, request: Request):
+    await get_current_user(request)
+    
+    # Get the updated results from request body
+    body = await request.json()
+    updated_results = body.get('results', [])
+    
+    # Filter only approved items
+    approved_items = [item for item in updated_results if item.get('Approval Status') == 'approved']
+    
+    # Create EXPORT file
+    output_path = f"/app/uploads/{upload_id}_export.xlsx"
+    create_export_file(approved_items, output_path)
+    
+    return FileResponse(
+        path=output_path,
+        filename="EXPORT.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@api_router.post("/download-box/{upload_id}")
+async def download_box_file(upload_id: str, request: Request):
+    await get_current_user(request)
+    
+    # Get the updated results from request body
+    body = await request.json()
+    updated_results = body.get('results', [])
+    
+    # Filter only approved items with box numbers
+    approved_with_box = [item for item in updated_results 
+                        if item.get('Approval Status') == 'approved' and item.get('Box Number')]
+    
+    # Create BOX file
+    output_path = f"/app/uploads/{upload_id}_box.xlsx"
+    create_box_file(approved_with_box, output_path)
+    
+    return FileResponse(
+        path=output_path,
+        filename="BOX_FR.xlsx",
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 

@@ -40,53 +40,56 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-black">
-      {/* Left side - Image with Matrix overlay */}
-      <div
-        className="hidden lg:block lg:w-1/2 bg-cover bg-center relative"
-        style={{
-          backgroundImage:
-            'url(https://images.unsplash.com/photo-1635241161466-541f065683ba?crop=entropy&cs=srgb&fm=jpg&q=85)',
-        }}
-      >
-        <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center">
-          <div className="text-center px-8">
-            <img src="/ambiance-logo.png" alt="Ambiance Sticker" className="mx-auto mb-6 w-64" />
-            <h1 className="text-5xl font-black mb-4 text-green-400" style={{ fontFamily: "'Courier New', monospace" }}>
-              PO REVIEW SYSTEM
-            </h1>
-            <p className="text-lg font-mono uppercase tracking-wider text-green-500">Production Cost Analysis</p>
+    <div className="min-h-screen flex bg-gradient-to-br from-blue-50 to-blue-100">
+      {/* Left side - Branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-900 to-blue-700 items-center justify-center p-12">
+        <div className="text-center">
+          <img src="/ambiance-logo.png" alt="Ambiance Sticker" className="mx-auto mb-8 w-64 drop-shadow-2xl" />
+          <h1 className="text-5xl font-bold mb-4 text-white">
+            Purchase Order System
+          </h1>
+          <p className="text-xl text-blue-100">Production Cost Analysis & Management</p>
+          <div className="mt-8 flex items-center justify-center gap-8">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white">24/7</div>
+              <div className="text-sm text-blue-200">Access</div>
+            </div>
+            <div className="h-12 w-px bg-blue-400"></div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white">Real-time</div>
+              <div className="text-sm text-blue-200">Analysis</div>
+            </div>
+            <div className="h-12 w-px bg-blue-400"></div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white">Smart</div>
+              <div className="text-sm text-blue-200">Approval</div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Right side - Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-black">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white">
         <div className="w-full max-w-md">
           <div className="mb-8">
-            <h2
-              className="text-4xl font-black mb-2 text-green-400"
-              style={{ fontFamily: "'Courier New', monospace" }}
-              data-testid="login-title"
-            >
-              ACCESS SYSTEM
+            <h2 className="text-3xl font-bold mb-2 text-gray-900" data-testid="login-title">
+              Sign In
             </h2>
-            <p className="text-sm font-mono uppercase tracking-wider text-gray-500">Enter Your Credentials</p>
+            <p className="text-sm text-gray-600">Enter your credentials to access the system</p>
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-950 border-l-4 border-red-500 flex items-start gap-3" data-testid="login-error">
-              <Warning size={20} weight="bold" className="text-red-400 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-400">{error}</p>
+            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded" data-testid="login-error">
+              <div className="flex items-start gap-3">
+                <Warning size={20} weight="fill" className="text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label
-                htmlFor="email"
-                className="block text-xs font-mono font-bold uppercase tracking-wider mb-2 text-green-400"
-              >
+              <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
                 Email Address
               </label>
               <input
@@ -95,17 +98,14 @@ const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-3 border-2 border-green-700 bg-black text-green-400 focus:border-green-500 focus:outline-none text-base"
-                placeholder="admin@poreview.com"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base transition-all"
+                placeholder="your.email@company.com"
                 data-testid="email-input"
               />
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className="block text-xs font-mono font-bold uppercase tracking-wider mb-2 text-green-400"
-              >
+              <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
                 Password
               </label>
               <div className="relative">
@@ -115,14 +115,14 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full px-4 py-3 border-2 border-green-700 bg-black text-green-400 focus:border-green-500 focus:outline-none text-base pr-12"
-                  placeholder="••••••••"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base pr-12 transition-all"
+                  placeholder="Enter your password"
                   data-testid="password-input"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-green-600 hover:text-green-400 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                   data-testid="toggle-password-visibility"
                 >
                   {showPassword ? <EyeSlash size={20} /> : <Eye size={20} />}
@@ -133,12 +133,23 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-green-600 text-black py-3 font-mono font-bold uppercase tracking-wider hover:bg-green-500 border-2 border-green-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
               data-testid="login-button"
             >
-              {loading ? 'Accessing...' : 'Login'}
+              {loading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+                  Signing in...
+                </div>
+              ) : (
+                'Sign In'
+              )}
             </button>
           </form>
+
+          <div className="mt-8 text-center text-sm text-gray-500">
+            <p>&copy; 2026 Ambiance Sticker. All rights reserved.</p>
+          </div>
         </div>
       </div>
     </div>

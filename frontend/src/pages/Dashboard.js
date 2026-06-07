@@ -142,6 +142,52 @@ const Dashboard = () => {
     }
   };
 
+  const handleDownloadExport = async (uploadId) => {
+    try {
+      const response = await axios.post(
+        `${API}/download-export/${uploadId}`,
+        { results: results.results },
+        {
+          withCredentials: true,
+          responseType: 'blob',
+        }
+      );
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `EXPORT.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('EXPORT file downloaded!');
+    } catch (error) {
+      toast.error('Failed to download EXPORT file');
+    }
+  };
+
+  const handleDownloadBox = async (uploadId) => {
+    try {
+      const response = await axios.post(
+        `${API}/download-box/${uploadId}`,
+        { results: results.results },
+        {
+          withCredentials: true,
+          responseType: 'blob',
+        }
+      );
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `BOX_FR.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('BOX file downloaded!');
+    } catch (error) {
+      toast.error('Failed to download BOX file');
+    }
+  };
+
   const handleDataChange = (updatedData) => {
     setResults(prev => ({
       ...prev,
@@ -446,12 +492,28 @@ const Dashboard = () => {
                   Approve All
                 </button>
                 <button
+                  onClick={() => handleDownloadExport(results.upload_id)}
+                  className="bg-yellow-600 text-black px-6 py-3 font-mono font-bold uppercase tracking-wider hover:bg-yellow-500 border-2 border-yellow-500 transition-colors flex items-center gap-2"
+                  data-testid="download-export-button"
+                >
+                  <DownloadSimple size={20} weight="bold" />
+                  Download EXPORT
+                </button>
+                <button
+                  onClick={() => handleDownloadBox(results.upload_id)}
+                  className="bg-orange-600 text-black px-6 py-3 font-mono font-bold uppercase tracking-wider hover:bg-orange-500 border-2 border-orange-500 transition-colors flex items-center gap-2"
+                  data-testid="download-box-button"
+                >
+                  <DownloadSimple size={20} weight="bold" />
+                  Download BOX
+                </button>
+                <button
                   onClick={() => handleDownload(results.upload_id)}
                   className="bg-green-900 border-2 border-green-500 text-green-400 px-6 py-3 font-mono font-bold uppercase tracking-wider hover:bg-green-800 transition-colors flex items-center gap-2"
                   data-testid="download-excel-button"
                 >
                   <DownloadSimple size={20} weight="bold" />
-                  Download Excel
+                  Download Analysis
                 </button>
                 <button
                   onClick={() => {

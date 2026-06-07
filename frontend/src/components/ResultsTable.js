@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Warning, CheckCircle, Check, X } from '@phosphor-icons/react';
+import { Warning, CheckCircle, Check, X, Package } from '@phosphor-icons/react';
 
 const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
   const [tableData, setTableData] = useState(data || []);
@@ -74,6 +74,14 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
     if (onDataChange) onDataChange(updatedData);
   };
 
+  const handleBoxNumberChange = (idx, newValue) => {
+    const updatedData = [...tableData];
+    updatedData[idx]['Box Number'] = newValue;
+    
+    setTableData(updatedData);
+    if (onDataChange) onDataChange(updatedData);
+  };
+
   const handleApprove = (idx) => {
     const updatedData = [...tableData];
     updatedData[idx]['Approval Status'] = 'approved';
@@ -114,6 +122,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
               <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Total Margin</th>
               <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Stock</th>
               <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Sales (30d)</th>
+              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-yellow-700">Box # (Edit)</th>
               <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-green-800">Actions</th>
             </tr>
           </thead>
@@ -228,6 +237,22 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                   </td>
                   <td className="px-2 py-2 text-sm text-right font-mono text-gray-400">
                     {row['Sales Units (30d)'] > 0 ? row['Sales Units (30d)'] : '-'}
+                  </td>
+                  
+                  {/* Editable Box Number - only for approved items */}
+                  <td className="px-2 py-2 bg-yellow-950">
+                    {approvalStatus === 'approved' ? (
+                      <input
+                        type="text"
+                        value={row['Box Number'] || ''}
+                        onChange={(e) => handleBoxNumberChange(idx, e.target.value)}
+                        placeholder="Box #"
+                        className="w-16 px-2 py-1 border-2 border-yellow-500 focus:border-yellow-400 focus:outline-none text-sm text-center font-mono font-bold bg-black text-yellow-400"
+                        data-testid={`box-number-input-${idx}`}
+                      />
+                    ) : (
+                      <span className="text-gray-600 text-xs">-</span>
+                    )}
                   </td>
                   
                   {/* Approve and Reject Buttons */}
