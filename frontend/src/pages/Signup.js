@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { LockKey, User, Envelope, Key } from '@phosphor-icons/react';
 import axios from 'axios';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 
 const API = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001/api';
 
