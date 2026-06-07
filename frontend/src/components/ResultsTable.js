@@ -163,22 +163,30 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                   data-testid={needsReview ? 'needs-review-row' : 'approved-row'}
                 >
                   <td className="px-2 py-2">
-                    {needsReview ? (
-                      <div className="flex items-center gap-1 text-red-600">
-                        <Warning size={16} weight="bold" />
-                        <span className="text-xs font-mono font-bold">REVIEW</span>
-                      </div>
-                    ) : approvalStatus === 'approved' ? (
-                      <div className="flex items-center gap-1 text-green-600">
-                        <CheckCircle size={16} weight="bold" />
-                        <span className="text-xs font-mono font-bold">APPROVED</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1 text-gray-600">
-                        <CheckCircle size={16} weight="bold" />
-                        <span className="text-xs font-mono font-bold">OK</span>
-                      </div>
-                    )}
+                    {(() => {
+                      if (needsReview) {
+                        return (
+                          <div className="flex items-center gap-1 text-red-600">
+                            <Warning size={16} weight="bold" />
+                            <span className="text-xs font-mono font-bold">REVIEW</span>
+                          </div>
+                        );
+                      }
+                      if (approvalStatus === 'approved') {
+                        return (
+                          <div className="flex items-center gap-1 text-green-600">
+                            <CheckCircle size={16} weight="bold" />
+                            <span className="text-xs font-mono font-bold">APPROVED</span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="flex items-center gap-1 text-gray-600">
+                          <CheckCircle size={16} weight="bold" />
+                          <span className="text-xs font-mono font-bold">OK</span>
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="px-2 py-2 text-sm font-mono text-gray-900">{row.PO}</td>
                   <td className="px-2 py-2 text-sm font-mono text-gray-900">{row.Vendor}</td>

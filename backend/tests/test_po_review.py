@@ -4,8 +4,8 @@ import pytest
 import requests
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://po-review-hub.preview.emergentagent.com').rstrip('/')
-ADMIN_EMAIL = "admin@poreview.com"
-ADMIN_PASSWORD = "admin123"
+ADMIN_EMAIL = os.environ.get('TEST_ADMIN_EMAIL', 'admin@poreview.com')
+ADMIN_PASSWORD = os.environ.get('TEST_ADMIN_PASSWORD', 'admin123')
 TEST_FILE = "/app/uploads/test_sample_order.xlsx"
 
 
