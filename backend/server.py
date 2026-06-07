@@ -40,6 +40,12 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
+class SignupRequest(BaseModel):
+    email: EmailStr
+    password: str
+    name: str
+    invite_code: str
+
 class User(BaseModel):
     id: str
     email: str
@@ -684,6 +690,73 @@ async def logout(response: Response):
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")
     return {"message": "Logged out successfully"}
+
+@api_router.post("/auth/signup")
+async def signup(request: SignupRequest, response: Response):
+    # Validate invite code
+    invite_codes = {
+        "IMAPPROVER1": "approver",
+        "IMADMIN1": "admin"
+    }
+    
+    if request.invite_code not in invite_codes:
+        raise HTTPException(status_code=400, detail="Invalid invite code")
+    
+    # Check if user already exists
+    existing_user = await db.users.find_one({"email": request.email})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Determine role from invite code
+    role = invite_codes[request.invite_code]
+    
+    # Hash password
+    hashed_password = hash_password(request.password)
+    
+    # Create user
+    user_data = {
+        "email": request.email,
+        "password_hash": hashed_password,
+        "name": request.name,
+        "role": role,
+        "created_at": datetime.now(timezone.utc)
+    }
+    
+    result = await db.users.insert_one(user_data)
+    user_id = str(result.inserted_id)
+    
+    # Create tokens
+    access_token = create_access_token(user_id, request.email)
+    refresh_token = create_refresh_token(user_id)
+    
+    # Set cookies
+    is_production = "preview.emergentagent.com" in os.environ.get('FRONTEND_ORIGIN', '')
+    
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=is_production,
+        samesite="none" if is_production else "lax",
+        max_age=900,
+        path="/"
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=is_production,
+        samesite="none" if is_production else "lax",
+        max_age=604800,
+        path="/"
+    )
+    
+    return {
+        "id": user_id,
+        "email": request.email,
+        "name": request.name,
+        "role": role
+    }
 
 # === Settings Endpoints ===
 @api_router.get("/settings")

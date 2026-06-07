@@ -147,6 +147,16 @@ const Login = () => {
             </button>
           </form>
 
+          {/* Sign Up Link */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Don't have an account?{' '}
+              <a href="/signup" className="text-blue-600 font-semibold hover:text-blue-700">
+                Sign up with invite code
+              </a>
+            </p>
+          </div>
+
           <div className="mt-8 text-center text-sm text-gray-500">
             <p>&copy; 2026 Ambiance Sticker. All rights reserved.</p>
           </div>

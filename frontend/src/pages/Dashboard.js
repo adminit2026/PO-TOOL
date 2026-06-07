@@ -37,13 +37,18 @@ const Dashboard = () => {
   const metrics = useMemo(() => {
     if (!results || !results.results) return null;
     
+    // Total PO Amount (all items)
     const totalOrderAmount = results.results.reduce((sum, item) => sum + (item['Total Cost'] || 0), 0);
-    const totalMargin = results.results.reduce((sum, item) => sum + (item['Total Margin'] || 0), 0);
-    const approvedCount = results.results.filter(item => item['Approval Status'] === 'approved').length;
     
-    // Calculate margin by location
+    // Approved items only
+    const approvedItems = results.results.filter(item => item['Approval Status'] === 'approved');
+    const approvedOrderAmount = approvedItems.reduce((sum, item) => sum + (item['Total Cost'] || 0), 0);
+    const approvedMargin = approvedItems.reduce((sum, item) => sum + (item['Total Margin'] || 0), 0);
+    const approvedCount = approvedItems.length;
+    
+    // Calculate margin by location (ONLY FOR APPROVED ITEMS)
     const locationBreakdown = {};
-    results.results.forEach(item => {
+    approvedItems.forEach(item => {
       const location = item['Ship to Location'] || 'Unknown';
       if (!locationBreakdown[location]) {
         locationBreakdown[location] = {
@@ -67,8 +72,9 @@ const Dashboard = () => {
     
     return {
       totalOrderAmount: totalOrderAmount.toFixed(2),
-      totalMargin: totalMargin.toFixed(2),
-      marginPercentage: totalOrderAmount > 0 ? ((totalMargin / totalOrderAmount) * 100).toFixed(2) : 0,
+      approvedOrderAmount: approvedOrderAmount.toFixed(2),
+      approvedMargin: approvedMargin.toFixed(2),
+      marginPercentage: approvedOrderAmount > 0 ? ((approvedMargin / approvedOrderAmount) * 100).toFixed(2) : 0,
       approvedCount,
       locationStats
     };
@@ -540,53 +546,64 @@ const Dashboard = () => {
         {/* Results Section */}
         {results && metrics && (
           <div className="space-y-6">
-            {/* Live Metrics - Matrix Style */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="bg-gray-50 border-2 border-blue-600 p-6">
+            {/* Live Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Total PO Amount */}
+              <div className="bg-gray-50 border-2 border-gray-400 p-6">
                 <div className="flex items-center gap-2 mb-2">
-                  <CurrencyEur size={20} weight="bold" className="text-blue-600" />
-                  <p className="text-xs font-mono uppercase tracking-wider text-blue-700">Total Order Amount</p>
+                  <CurrencyEur size={20} weight="bold" className="text-gray-700" />
+                  <p className="text-xs font-mono uppercase tracking-wider text-gray-700">Total PO Amount</p>
                 </div>
-                <p className="text-4xl font-black text-blue-600" data-testid="total-order-amount">€{metrics.totalOrderAmount}</p>
+                <p className="text-3xl font-black text-gray-900" data-testid="total-po-amount">€{metrics.totalOrderAmount}</p>
+                <p className="text-xs text-gray-500 mt-1">All line items</p>
               </div>
+
+              {/* Approved PO Amount */}
+              <div className="bg-gray-50 border-2 border-green-600 p-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle size={20} weight="bold" className="text-green-600" />
+                  <p className="text-xs font-mono uppercase tracking-wider text-green-700">Approved PO Amount</p>
+                </div>
+                <p className="text-3xl font-black text-green-600" data-testid="approved-po-amount">€{metrics.approvedOrderAmount}</p>
+                <p className="text-xs text-gray-500 mt-1">{metrics.approvedCount} items approved</p>
+              </div>
+
+              {/* Approved Margin */}
               <div className="bg-gray-50 border-2 border-blue-600 p-6">
                 <div className="flex items-center gap-2 mb-2">
                   <TrendUp size={20} weight="bold" className="text-blue-600" />
-                  <p className="text-xs font-mono uppercase tracking-wider text-blue-700">Total Margin</p>
+                  <p className="text-xs font-mono uppercase tracking-wider text-blue-700">Approved Margin</p>
                 </div>
-                <p className="text-4xl font-black text-blue-600" data-testid="total-margin">€{metrics.totalMargin}</p>
-                <p className="text-sm text-gray-500 mt-1">{metrics.marginPercentage}% margin</p>
+                <p className="text-3xl font-black text-blue-600" data-testid="approved-margin">€{metrics.approvedMargin}</p>
+                <p className="text-xs text-gray-500 mt-1">{metrics.marginPercentage}% margin</p>
               </div>
+
+              {/* Needs Review */}
               <div className="bg-gray-50 border-2 border-red-500 p-6">
                 <div className="flex items-center gap-2 mb-2">
-                  <Warning size={20} weight="bold" className="text-red-400" />
+                  <Warning size={20} weight="bold" className="text-red-500" />
                   <p className="text-xs font-mono uppercase tracking-wider text-red-500">Needs Review</p>
                 </div>
-                <p className="text-4xl font-black text-red-400" data-testid="needs-review-count">{results.needs_review}</p>
-              </div>
-              <div className="bg-gray-50 border-2 border-blue-600 p-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle size={20} weight="bold" className="text-blue-600" />
-                  <p className="text-xs font-mono uppercase tracking-wider text-blue-700">Approved</p>
-                </div>
-                <p className="text-4xl font-black text-blue-600" data-testid="approved-count">{metrics.approvedCount}</p>
+                <p className="text-3xl font-black text-red-500" data-testid="needs-review-count">{results.needs_review}</p>
+                <p className="text-xs text-gray-500 mt-1">Low margin items</p>
               </div>
             </div>
 
-            {/* Margin Breakdown by Location */}
+            {/* Margin Breakdown by Location (Approved Items Only) */}
             {metrics.locationStats && metrics.locationStats.length > 0 && (
-              <div className="bg-white border border-gray-300 rounded-lg shadow p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Margin Breakdown by Location</h3>
+              <div className="bg-white border-2 border-gray-300 p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-2 font-mono uppercase tracking-wider">Margin by Location (Approved Items)</h3>
+                <p className="text-xs text-gray-600 mb-4">Real-time margin updates when items are approved</p>
                 <div className="space-y-3">
                   {metrics.locationStats.map((loc, idx) => (
-                    <div key={idx} className="flex justify-between items-center p-3 bg-gray-50 rounded border border-gray-200">
+                    <div key={idx} className="flex justify-between items-center p-3 bg-gray-50 border border-gray-200">
                       <div className="flex-1">
-                        <p className="font-semibold text-gray-900">{loc.location}</p>
-                        <p className="text-sm text-gray-600">{loc.items} items</p>
+                        <p className="font-semibold text-gray-900 text-sm">{loc.location}</p>
+                        <p className="text-xs text-gray-600">{loc.items} approved items</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-xl font-bold text-blue-600">€{loc.totalMargin}</p>
-                        <p className="text-sm text-gray-600">{loc.marginPercentage}% margin</p>
+                        <p className="text-lg font-bold text-blue-600">€{loc.totalMargin}</p>
+                        <p className="text-xs text-gray-600">{loc.marginPercentage}% margin</p>
                       </div>
                     </div>
                   ))}
@@ -595,67 +612,69 @@ const Dashboard = () => {
             )}
 
             {/* Action Bar */}
-            <div className="bg-gray-50 border-2 border-blue-600 p-6 flex justify-between items-center">
-              <div>
-                <p className="text-xs font-mono uppercase tracking-wider text-blue-700">Current File</p>
-                <p className="font-medium text-blue-600" data-testid="current-filename">{results.filename}</p>
+            <div className="bg-white border-2 border-gray-300 p-4">
+              <div className="mb-4">
+                <p className="text-xs font-mono uppercase tracking-wider text-gray-600">Current File</p>
+                <p className="font-medium text-gray-900" data-testid="current-filename">{results.filename}</p>
               </div>
-              <div className="flex gap-4">
+              
+              {/* Buttons Grid - Uniform Style */}
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
                 <button
                   onClick={handleApproveAll}
-                  className="bg-blue-600 text-black px-6 py-3 font-mono font-bold uppercase tracking-wider hover:bg-blue-700 border-2 border-blue-600 transition-colors flex items-center gap-2"
+                  className="bg-blue-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
                   data-testid="approve-all-button"
                 >
-                  <CheckSquare size={20} weight="bold" />
+                  <CheckSquare size={16} weight="bold" />
                   Approve All
                 </button>
                 <button
                   onClick={() => handleDownloadExport(results.upload_id)}
-                  className="bg-yellow-600 text-black px-6 py-3 font-mono font-bold uppercase tracking-wider hover:bg-yellow-500 border-2 border-yellow-500 transition-colors flex items-center gap-2"
+                  className="bg-blue-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
                   data-testid="download-export-button"
                 >
-                  <DownloadSimple size={20} weight="bold" />
-                  Download EXPORT
+                  <DownloadSimple size={16} weight="bold" />
+                  EXPORT
                 </button>
                 <button
                   onClick={() => handleDownloadBox(results.upload_id)}
-                  className="bg-orange-600 text-black px-6 py-3 font-mono font-bold uppercase tracking-wider hover:bg-orange-500 border-2 border-orange-500 transition-colors flex items-center gap-2"
+                  className="bg-blue-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
                   data-testid="download-box-button"
                 >
-                  <DownloadSimple size={20} weight="bold" />
-                  Download BOX
+                  <DownloadSimple size={16} weight="bold" />
+                  BOX
                 </button>
                 <button
                   onClick={() => handleDownloadProductionSheets(results.upload_id)}
-                  className="bg-purple-600 text-white px-6 py-3 font-mono font-bold uppercase tracking-wider hover:bg-purple-500 border-2 border-purple-500 transition-colors flex items-center gap-2"
+                  className="bg-blue-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
                   data-testid="download-production-sheets-button"
                 >
-                  <DownloadSimple size={20} weight="bold" />
-                  Production Sheets
+                  <DownloadSimple size={16} weight="bold" />
+                  Prod Sheets
                 </button>
                 <button
                   onClick={() => handleDownloadEANList(results.upload_id)}
-                  className="bg-teal-600 text-white px-6 py-3 font-mono font-bold uppercase tracking-wider hover:bg-teal-500 border-2 border-teal-500 transition-colors flex items-center gap-2"
+                  className="bg-blue-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
                   data-testid="download-ean-list-button"
                 >
-                  <DownloadSimple size={20} weight="bold" />
+                  <DownloadSimple size={16} weight="bold" />
                   EAN List
                 </button>
                 <button
                   onClick={() => handleDownloadPackingList(results.upload_id)}
-                  className="bg-indigo-600 text-white px-6 py-3 font-mono font-bold uppercase tracking-wider hover:bg-indigo-500 border-2 border-indigo-500 transition-colors flex items-center gap-2"
+                  className="bg-blue-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
                   data-testid="download-packing-list-button"
                 >
-                  <DownloadSimple size={20} weight="bold" />
-                  Packing List
+                  <DownloadSimple size={16} weight="bold" />
+                  Packing
                 </button>
                 <button
                   onClick={() => handleDownload(results.upload_id)}
-                  className="bg-blue-100 border-2 border-blue-600 text-blue-600 px-6 py-3 font-mono font-bold uppercase tracking-wider hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  className="bg-blue-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
                   data-testid="download-excel-button"
                 >
-                  <DownloadSimple size={20} weight="bold" />
-                  Download Analysis
+                  <DownloadSimple size={16} weight="bold" />
+                  Analysis
                 </button>
                 <button
                   onClick={() => {
@@ -664,7 +683,7 @@ const Dashboard = () => {
                     setStockFile(null);
                     setSalesFile(null);
                   }}
-                  className="bg-gray-50 border-2 border-blue-600 text-blue-600 px-6 py-3 font-mono font-bold uppercase tracking-wider hover:bg-blue-50 transition-colors"
+                  className="bg-gray-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-gray-700 transition-colors"
                   data-testid="new-upload-button"
                 >
                   New Upload
