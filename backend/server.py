@@ -494,22 +494,20 @@ def load_reference_data():
 
 def create_production_sheets(approved_items: list, output_path: str):
     """
-    Create Production Sheets Excel with separate tabs for each location
+    Create Production Sheets Excel with two sheets:
+    - 'To Print Stock' for SKUs starting with 'J'
+    - 'To Print Prod' for all other SKUs
     Matches with reference file to get Color and Taille
     """
     wb = openpyxl.Workbook()
-    wb.remove(wb.active)  # Remove default sheet
+    # Don't remove the default sheet yet - we'll handle it at the end
     
     # Load reference data
     reference_dict = load_reference_data()
     
-    # Group items by location
-    location_groups = {}
+    # Prepare items with reference data
+    items_with_ref = []
     for item in approved_items:
-        location = item.get('Ship to Location', 'Unknown')
-        if location not in location_groups:
-            location_groups[location] = []
-        
         # Try to match with reference data
         model = item.get('Model Number', '')
         ref_data = reference_dict.get(str(model).strip(), {})
@@ -520,45 +518,49 @@ def create_production_sheets(approved_items: list, output_path: str):
             'Color': ref_data.get('color', '') if pd.notna(ref_data.get('color')) else '',
             'Taille': ref_data.get('taille', '') if pd.notna(ref_data.get('taille')) else ''
         }
-        location_groups[location].append(item_with_ref)
+        items_with_ref.append(item_with_ref)
+    
+    # Separate items by SKU prefix
+    stock_items = []  # SKUs starting with 'J'
+    prod_items = []   # All other SKUs
+    
+    for item in items_with_ref:
+        sku = str(item.get('Model Number', '')).strip()
+        if sku.upper().startswith('J'):
+            stock_items.append(item)
+        else:
+            prod_items.append(item)
     
     # Headers for production sheets
-    headers = ['PO', 'Vendor', 'Ship to location', 'SKU/Model', 'ASIN', 'External ID (EAN)', 
-               'Title', 'Quantity', 'Unit Cost', 'Color', 'Taille', 'Box Number']
+    headers = ['REF', 'COLOR', 'TAILLE', 'QTY']
     
     header_fill = PatternFill(start_color="0A5F9C", end_color="0A5F9C", fill_type="solid")
     header_font = Font(bold=True, size=11, color="FFFFFF")
     
-    # Create a sheet for each location
-    for location, items in sorted(location_groups.items()):
-        # Clean location name for sheet title (max 31 chars, no special chars)
-        sheet_name = location[:31].replace('[', '').replace(']', '').replace(':', '-').replace('*', '').replace('?', '').replace('/', '-').replace('\\', '-')
-        ws = wb.create_sheet(sheet_name)
+    sheets_created = []
+    
+    # Create "To Print Prod" sheet first (most common)
+    if prod_items:
+        ws_prod = wb.active
+        ws_prod.title = 'To Print Prod'
+        sheets_created.append('To Print Prod')
         
         # Write headers
         for col_idx, header in enumerate(headers, 1):
-            cell = ws.cell(row=1, column=col_idx, value=header)
+            cell = ws_prod.cell(row=1, column=col_idx, value=header)
             cell.font = header_font
             cell.fill = header_fill
             cell.alignment = Alignment(horizontal='center', vertical='center')
         
         # Write data
-        for row_idx, item in enumerate(items, 2):
-            ws.cell(row=row_idx, column=1, value=item.get('PO', ''))
-            ws.cell(row=row_idx, column=2, value=item.get('Vendor', ''))
-            ws.cell(row=row_idx, column=3, value=item.get('Ship to Location', ''))
-            ws.cell(row=row_idx, column=4, value=item.get('Model Number', ''))
-            ws.cell(row=row_idx, column=5, value=item.get('ASIN', ''))
-            ws.cell(row=row_idx, column=6, value=item.get('External ID', ''))
-            ws.cell(row=row_idx, column=7, value=item.get('Title', ''))
-            ws.cell(row=row_idx, column=8, value=item.get('Quantity', 0))
-            ws.cell(row=row_idx, column=9, value=item.get('Unit Cost', 0))
-            ws.cell(row=row_idx, column=10, value=item.get('Color', ''))
-            ws.cell(row=row_idx, column=11, value=item.get('Taille', ''))
-            ws.cell(row=row_idx, column=12, value=item.get('Box Number', ''))
+        for row_idx, item in enumerate(prod_items, 2):
+            ws_prod.cell(row=row_idx, column=1, value=item.get('Model Number', ''))  # REF
+            ws_prod.cell(row=row_idx, column=2, value=item.get('Color', ''))        # COLOR
+            ws_prod.cell(row=row_idx, column=3, value=item.get('Taille', ''))       # TAILLE
+            ws_prod.cell(row=row_idx, column=4, value=item.get('Quantity', 0))      # QTY
         
         # Auto-adjust column widths
-        for column in ws.columns:
+        for column in ws_prod.columns:
             max_length = 0
             column_letter = column[0].column_letter
             for cell in column:
@@ -568,7 +570,54 @@ def create_production_sheets(approved_items: list, output_path: str):
                 except (TypeError, AttributeError):
                     pass
             adjusted_width = min(max_length + 2, 50)
-            ws.column_dimensions[column_letter].width = adjusted_width
+            ws_prod.column_dimensions[column_letter].width = adjusted_width
+    
+    # Create "To Print Stock" sheet
+    if stock_items:
+        ws_stock = wb.create_sheet('To Print Stock', 0)  # Insert at beginning
+        sheets_created.append('To Print Stock')
+        
+        # Write headers
+        for col_idx, header in enumerate(headers, 1):
+            cell = ws_stock.cell(row=1, column=col_idx, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+        
+        # Write data
+        for row_idx, item in enumerate(stock_items, 2):
+            ws_stock.cell(row=row_idx, column=1, value=item.get('Model Number', ''))  # REF
+            ws_stock.cell(row=row_idx, column=2, value=item.get('Color', ''))        # COLOR
+            ws_stock.cell(row=row_idx, column=3, value=item.get('Taille', ''))       # TAILLE
+            ws_stock.cell(row=row_idx, column=4, value=item.get('Quantity', 0))      # QTY
+        
+        # Auto-adjust column widths
+        for column in ws_stock.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except (TypeError, AttributeError):
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws_stock.column_dimensions[column_letter].width = adjusted_width
+    
+    # If no prod items but we have stock items, rename the default sheet
+    if not prod_items and stock_items:
+        # The stock sheet was already created, nothing to do
+        pass
+    
+    # If neither sheet has items, create an empty "To Print Prod" sheet
+    if not prod_items and not stock_items:
+        ws_empty = wb.active
+        ws_empty.title = 'To Print Prod'
+        for col_idx, header in enumerate(headers, 1):
+            cell = ws_empty.cell(row=1, column=col_idx, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal='center', vertical='center')
     
     wb.save(output_path)
 
