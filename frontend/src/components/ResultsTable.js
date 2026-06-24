@@ -125,26 +125,21 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
         <table className="w-full">
           <thead className="bg-blue-700 text-white sticky top-0">
             <tr>
-              <th className="px-2 py-3 text-left text-xs font-mono font-bold uppercase tracking-wider">Status</th>
-              <th className="px-2 py-3 text-left text-xs font-mono font-bold uppercase tracking-wider">PO</th>
-              <th className="px-2 py-3 text-left text-xs font-mono font-bold uppercase tracking-wider">Vendor</th>
-              <th className="px-2 py-3 text-left text-xs font-mono font-bold uppercase tracking-wider">Location</th>
-              <th className="px-2 py-3 text-left text-xs font-mono font-bold uppercase tracking-wider">ASIN</th>
-              <th className="px-2 py-3 text-left text-xs font-mono font-bold uppercase tracking-wider">External ID</th>
-              <th className="px-2 py-3 text-left text-xs font-mono font-bold uppercase tracking-wider">Model</th>
-              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-blue-100 text-blue-900">Qty (Edit)</th>
-              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-blue-100 text-blue-900">Unit Cost (Edit)</th>
-              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-blue-100 text-blue-900">Prod Cost (Edit)</th>
-              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-blue-100 text-blue-900">UPS Cost (Edit)</th>
-              <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Op Cost</th>
-              <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Commission</th>
-              <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Margin/Unit</th>
-              <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Margin %</th>
-              <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Total Margin</th>
-              <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Stock</th>
-              <th className="px-2 py-3 text-right text-xs font-mono font-bold uppercase tracking-wider">Sales (30d)</th>
-              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-yellow-100 text-yellow-900">Box # (Edit)</th>
-              <th className="px-2 py-3 text-center text-xs font-mono font-bold uppercase tracking-wider bg-blue-600 text-white">Actions</th>
+              <th className="px-1 py-2 text-left text-[10px] font-mono font-bold uppercase tracking-wider">Status</th>
+              <th className="px-1 py-2 text-left text-[10px] font-mono font-bold uppercase tracking-wider">PO</th>
+              <th className="px-1 py-2 text-left text-[10px] font-mono font-bold uppercase tracking-wider">Vendor</th>
+              <th className="px-1 py-2 text-left text-[10px] font-mono font-bold uppercase tracking-wider">Location</th>
+              <th className="px-1 py-2 text-left text-[10px] font-mono font-bold uppercase tracking-wider">ASIN</th>
+              <th className="px-1 py-2 text-left text-[10px] font-mono font-bold uppercase tracking-wider">EAN</th>
+              <th className="px-1 py-2 text-left text-[10px] font-mono font-bold uppercase tracking-wider">Model</th>
+              <th className="px-1 py-2 text-center text-[10px] font-mono font-bold uppercase tracking-wider bg-blue-100 text-blue-900">Qty</th>
+              <th className="px-1 py-2 text-center text-[10px] font-mono font-bold uppercase tracking-wider bg-blue-100 text-blue-900">Unit€</th>
+              <th className="px-1 py-2 text-center text-[10px] font-mono font-bold uppercase tracking-wider bg-blue-100 text-blue-900">Prod€</th>
+              <th className="px-1 py-2 text-center text-[10px] font-mono font-bold uppercase tracking-wider bg-blue-100 text-blue-900">UPS€</th>
+              <th className="px-1 py-2 text-right text-[10px] font-mono font-bold uppercase tracking-wider">Margin€</th>
+              <th className="px-1 py-2 text-right text-[10px] font-mono font-bold uppercase tracking-wider">Margin%</th>
+              <th className="px-1 py-2 text-center text-[10px] font-mono font-bold uppercase tracking-wider bg-yellow-100 text-yellow-900">Box#</th>
+              <th className="px-1 py-2 text-center text-[10px] font-mono font-bold uppercase tracking-wider bg-blue-600 text-white">Actions</th>
             </tr>
           </thead>
           <tbody>
