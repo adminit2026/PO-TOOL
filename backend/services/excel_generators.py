@@ -279,10 +279,7 @@ def create_ean_list_csv_by_location(approved_items: list, output_dir: str):
     """
     Create separate EAN List CSV files for each location and return ZIP file
     
-    Format varies by location:
-    - CDG7: semicolon-separated (EAN;ASIN;SKU;QTY)
-    - XCD2: space-separated (EAN ASIN SKU QTY)
-    - XOR1/XOR2/XOR4: comma-separated with Title (EAN,ASIN,Title,QTY)
+    Format: semicolon-separated (EAN;ASIN;SKU;QTY) for ALL locations
     
     Args:
         approved_items: List of approved item dictionaries
@@ -291,7 +288,6 @@ def create_ean_list_csv_by_location(approved_items: list, output_dir: str):
     Returns:
         Path to ZIP file containing all CSVs
     """
-    import csv
     import zipfile
     from pathlib import Path
     
@@ -309,42 +305,18 @@ def create_ean_list_csv_by_location(approved_items: list, output_dir: str):
     csv_dir = Path(output_dir) / 'ean_csvs'
     csv_dir.mkdir(parents=True, exist_ok=True)
     
-    def get_location_format(location_code):
-        """Determine CSV format based on location code"""
-        loc_upper = location_code.upper()
-        if 'CDG' in loc_upper:
-            return 'semicolon'
-        elif 'XCD' in loc_upper:
-            return 'space'
-        else:
-            return 'comma_title'
-    
     csv_files = []
     
-    # Create CSV for each location
+    # Create CSV for each location - ALL use semicolon format
     for location_code, items in location_groups.items():
-        format_type = get_location_format(location_code)
         filename = f"{location_code} EAN.csv"
         filepath = csv_dir / filename
         
         with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
-            if format_type == 'semicolon':
-                for item in items:
-                    line = f"{item.get('External ID', '')};{item.get('ASIN', '')};{item.get('Model Number', '')};{item.get('Quantity', 0)}\n"
-                    csvfile.write(line)
-            elif format_type == 'space':
-                for item in items:
-                    line = f"{item.get('External ID', '')} {item.get('ASIN', '')} {item.get('Model Number', '')} {item.get('Quantity', 0)}\n"
-                    csvfile.write(line)
-            else:  # comma_title
-                writer = csv.writer(csvfile)
-                for item in items:
-                    writer.writerow([
-                        item.get('External ID', ''),
-                        item.get('ASIN', ''),
-                        item.get('Title', ''),
-                        item.get('Quantity', 0)
-                    ])
+            # Format: EAN;ASIN;SKU;QTY
+            for item in items:
+                line = f"{item.get('External ID', '')};{item.get('ASIN', '')};{item.get('Model Number', '')};{item.get('Quantity', 0)}\n"
+                csvfile.write(line)
         
         csv_files.append(filepath)
     

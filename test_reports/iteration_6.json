@@ -1,0 +1,28 @@
+{
+  "summary": "Verified bug fix: create_ean_list_csv_by_location now produces identical CDG7 format (EAN;ASIN;SKU;QTY, semicolon-separated, no Title) for ALL locations. Tested with synthetic items across CDG7, ETZ2, XOR1, XCD1. Frontend reachable, admin login works.",
+  "tested_scope": ["backend", "integration"],
+  "passed": [
+    "create_ean_list_csv_by_location generates ZIP containing per-location CSV files",
+    "CDG7 EAN.csv: semicolon-separated 4 fields (EAN;ASIN;SKU;QTY)",
+    "ETZ2 EAN.csv: same CDG7 format - bug fixed (previously had Title column)",
+    "XOR1 EAN.csv: same CDG7 format - bug fixed",
+    "XCD1 EAN.csv: same CDG7 format (no longer space-separated)",
+    "Model Number correctly in 3rd column for every location",
+    "No Title column leakage in any CSV across all locations",
+    "No commas present; only semicolons as separators",
+    "Frontend loads (HTTP 200) and admin login (HTTP 200) on public URL"
+  ],
+  "failed": [],
+  "action_items": [
+    "Test files (EditLineItems.xlsx, Inventory.xlsx, Sales.xlsx) were NOT present in /tmp/, so full UI-driven upload->download flow was not executed. If end-to-end UI verification is required, please provide the test files."
+  ],
+  "success_rate": {"backend": "100%", "frontend": "smoke-only (load+login)"},
+  "retest_needed": false,
+  "full_testing_deferred": true,
+  "evidence": {
+    "CDG7 EAN.csv": "3700000000001;B001AAA001;SKU-CDG-1;5\\n3700000000002;B001AAA002;SKU-CDG-2;3",
+    "ETZ2 EAN.csv": "4000000000001;B002BBB001;SKU-ETZ-1;10",
+    "XOR1 EAN.csv": "8400000000001;B003CCC001;SKU-XOR-1;7",
+    "XCD1 EAN.csv": "8000000000001;B004DDD001;SKU-XCD-1;2"
+  }
+}
