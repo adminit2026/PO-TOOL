@@ -621,27 +621,86 @@ def create_production_sheets(approved_items: list, output_path: str):
     
     wb.save(output_path)
 
-def create_ean_list_csv(approved_items: list, output_path: str):
+def create_ean_list_csv_by_location(approved_items: list, output_dir: str):
     """
-    Create EAN List CSV with approved items
-    Columns: EAN (External ID), SKU, ASIN, Title, Quantity, Location
+    Create separate EAN List CSV files for each location
+    Returns path to ZIP file containing all CSVs
+    
+    Format varies by location:
+    - CDG7: semicolon-separated (EAN;ASIN;SKU;QTY)
+    - XCD2: space-separated (EAN ASIN SKU QTY)
+    - XOR1/XOR2/XOR4: comma-separated with Title (EAN,ASIN,Title,QTY)
     """
     import csv
+    import zipfile
+    from pathlib import Path
     
-    with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ['EAN', 'SKU', 'ASIN', 'Title', 'Quantity', 'Location']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    # Group items by location
+    location_groups = {}
+    for item in approved_items:
+        location = item.get('Ship to Location', 'Unknown')
+        # Extract location code (e.g., "CDG7" from "CDG7 - Senlis, Oise")
+        location_code = location.split('-')[0].strip() if '-' in location else location.strip()
         
-        writer.writeheader()
-        for item in approved_items:
-            writer.writerow({
-                'EAN': item.get('External ID', ''),
-                'SKU': item.get('Model Number', ''),
-                'ASIN': item.get('ASIN', ''),
-                'Title': item.get('Title', ''),
-                'Quantity': item.get('Quantity', 0),
-                'Location': item.get('Ship to Location', '')
-            })
+        if location_code not in location_groups:
+            location_groups[location_code] = []
+        location_groups[location_code].append(item)
+    
+    # Create directory for CSV files
+    csv_dir = Path(output_dir) / 'ean_csvs'
+    csv_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Determine format based on location
+    def get_location_format(location_code):
+        loc_upper = location_code.upper()
+        if 'CDG' in loc_upper:
+            return 'semicolon'  # EAN;ASIN;SKU;QTY
+        elif 'XCD' in loc_upper:
+            return 'space'  # EAN ASIN SKU QTY
+        else:
+            return 'comma_title'  # EAN,ASIN,Title,QTY
+    
+    csv_files = []
+    
+    # Create CSV for each location
+    for location_code, items in location_groups.items():
+        format_type = get_location_format(location_code)
+        filename = f"{location_code} EAN.csv"
+        filepath = csv_dir / filename
+        
+        with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
+            if format_type == 'semicolon':
+                # CDG7 format: EAN;ASIN;SKU;QTY
+                for item in items:
+                    line = f"{item.get('External ID', '')};{item.get('ASIN', '')};{item.get('Model Number', '')};{item.get('Quantity', 0)}\n"
+                    csvfile.write(line)
+            
+            elif format_type == 'space':
+                # XCD2 format: EAN ASIN SKU QTY (space-separated)
+                for item in items:
+                    line = f"{item.get('External ID', '')} {item.get('ASIN', '')} {item.get('Model Number', '')} {item.get('Quantity', 0)}\n"
+                    csvfile.write(line)
+            
+            else:  # comma_title
+                # XOR1/XOR2/XOR4 format: EAN,ASIN,Title,QTY
+                writer = csv.writer(csvfile)
+                for item in items:
+                    writer.writerow([
+                        item.get('External ID', ''),
+                        item.get('ASIN', ''),
+                        item.get('Title', ''),
+                        item.get('Quantity', 0)
+                    ])
+        
+        csv_files.append(filepath)
+    
+    # Create ZIP file
+    zip_path = Path(output_dir) / 'EAN_Lists.zip'
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for csv_file in csv_files:
+            zipf.write(csv_file, csv_file.name)
+    
+    return str(zip_path)
 
 def create_packing_list(approved_items: list, output_path: str):
     """
@@ -919,7 +978,9 @@ async def upload_files(
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "settings_used": settings,
             "has_stock_data": len(stock_data) > 0,
-            "has_sales_data": len(sales_data) > 0
+            "has_sales_data": len(sales_data) > 0,
+            "user_email": user.get('email'),
+            "status": "In Progress"
         }
         await db.uploads.insert_one(upload_record)
         
@@ -940,14 +1001,39 @@ async def upload_files(
 
 @api_router.get("/history")
 async def get_history(request: Request):
-    await get_current_user(request)
+    user = await get_current_user(request)
     
     uploads = await db.uploads.find(
         {},
-        {"_id": 0, "upload_id": 1, "filename": 1, "total_items": 1, "needs_review": 1, "approved": 1, "timestamp": 1}
+        {"_id": 0, "upload_id": 1, "filename": 1, "total_items": 1, "needs_review": 1, "approved": 1, "timestamp": 1, "user_email": 1, "status": 1}
     ).sort("timestamp", -1).limit(50).to_list(50)
     
     return uploads
+
+@api_router.get("/upload/{upload_id}")
+async def get_upload(upload_id: str, request: Request):
+    await get_current_user(request)
+    
+    # Get upload record
+    upload = await db.uploads.find_one({"upload_id": upload_id}, {"_id": 0})
+    if not upload:
+        raise HTTPException(status_code=404, detail="Upload not found")
+    
+    # Get results
+    results = await db.results.find(
+        {"upload_id": upload_id},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    return {
+        "upload_id": upload_id,
+        "filename": upload['filename'],
+        "total_items": len(results),
+        "needs_review": upload.get('needs_review', 0),
+        "approved": upload.get('approved', 0),
+        "timestamp": upload['timestamp'],
+        "results": results
+    }
 
 @api_router.post("/download/{upload_id}")
 async def download_file(upload_id: str, request: Request):
@@ -1046,16 +1132,16 @@ async def download_ean_list(upload_id: str, request: Request):
     approved_items = [item for item in updated_results 
                      if item.get('Approval Status') == 'approved']
     
-    # Create EAN List CSV
+    # Create EAN List ZIP with separate CSVs per location
     from datetime import datetime
     date_str = datetime.now().strftime('%Y%m%d')
-    output_path = f"/app/uploads/{upload_id}_ean_list.csv"
-    create_ean_list_csv(approved_items, output_path)
+    output_dir = f"/app/uploads/{upload_id}_ean"
+    zip_path = create_ean_list_csv_by_location(approved_items, output_dir)
     
     return FileResponse(
-        path=output_path,
-        filename=f"{date_str}-EANList.csv",
-        media_type="text/csv"
+        path=zip_path,
+        filename=f"{date_str}-EANLists.zip",
+        media_type="application/zip"
     )
 
 @api_router.post("/download-packing-list/{upload_id}")

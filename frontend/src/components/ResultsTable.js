@@ -183,155 +183,122 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                       );
                     })()}
                   </td>
-                  <td className="px-2 py-2 text-sm font-mono text-gray-900">{row.PO}</td>
-                  <td className="px-2 py-2 text-sm font-mono text-gray-900">{row.Vendor}</td>
-                  <td className="px-2 py-2 text-sm max-w-xs truncate text-gray-700" title={row['Ship to Location']}>
+                  <td className="px-1 py-1 text-[11px] font-mono text-gray-900">{row.PO}</td>
+                  <td className="px-1 py-1 text-[11px] font-mono text-gray-900">{row.Vendor}</td>
+                  <td className="px-1 py-1 text-[11px] max-w-[120px] truncate text-gray-700" title={row['Ship to Location']}>
                     {row['Ship to Location']}
                   </td>
-                  <td className="px-2 py-2 text-sm font-mono text-gray-900">{row.ASIN}</td>
-                  <td className="px-2 py-2 text-sm font-mono text-gray-700">{row['External ID']}</td>
-                  <td className="px-2 py-2 text-sm text-gray-700">{row['Model Number']}</td>
+                  <td className="px-1 py-1 text-[11px] font-mono text-gray-900">{row.ASIN}</td>
+                  <td className="px-1 py-1 text-[11px] font-mono text-gray-700">{row['External ID']}</td>
+                  <td className="px-1 py-1 text-[11px] text-gray-700 max-w-[150px] truncate" title={row['Model Number']}>{row['Model Number']}</td>
                   
                   {/* Editable Quantity */}
-                  <td className="px-2 py-2 bg-blue-50">
+                  <td className="px-1 py-1 bg-blue-50">
                     <input
                       type="number"
                       step="1"
                       min="0"
                       value={row['Quantity']}
                       onChange={(e) => handleQuantityChange(idx, e.target.value)}
-                      className="w-16 px-2 py-1 border-2 border-blue-300 focus:border-blue-600 focus:outline-none text-sm text-center font-mono font-bold bg-white text-gray-900"
+                      className="w-12 px-1 py-0.5 border border-blue-300 focus:border-blue-600 focus:outline-none text-[11px] text-center font-mono font-bold bg-white text-gray-900"
                       data-testid={`quantity-input-${idx}`}
                     />
                   </td>
                   
                   {/* Editable Unit Cost */}
-                  <td className="px-2 py-2 bg-blue-50">
+                  <td className="px-1 py-1 bg-blue-50">
                     <input
                       type="number"
                       step="0.1"
                       min="0"
                       value={row['Unit Cost']}
                       onChange={(e) => handleUnitCostChange(idx, e.target.value)}
-                      className="w-20 px-2 py-1 border-2 border-blue-300 focus:border-blue-600 focus:outline-none text-sm text-right font-mono font-bold bg-white text-gray-900"
+                      className="w-14 px-1 py-0.5 border border-blue-300 focus:border-blue-600 focus:outline-none text-[11px] text-right font-mono font-bold bg-white text-gray-900"
                       data-testid={`unit-cost-input-${idx}`}
                     />
-                    <span className="ml-1 text-sm text-gray-900">€</span>
                   </td>
                   
-                  
                   {/* Editable Production Cost */}
-                  <td className="px-2 py-2 bg-blue-50">
+                  <td className="px-1 py-1 bg-blue-50">
                     <input
                       type="number"
                       step="0.1"
                       min="0"
                       value={row['Production Cost']}
                       onChange={(e) => handleProductionCostChange(idx, e.target.value)}
-                      className="w-20 px-2 py-1 border-2 border-blue-300 focus:border-blue-600 focus:outline-none text-sm text-right font-mono font-bold bg-white text-gray-900"
+                      className="w-14 px-1 py-0.5 border border-blue-300 focus:border-blue-600 focus:outline-none text-[11px] text-right font-mono font-bold bg-white text-gray-900"
                       data-testid={`prod-cost-input-${idx}`}
                     />
-                    <span className="ml-1 text-sm text-gray-900">€</span>
                   </td>
                   
                   {/* Editable UPS Cost */}
-                  <td className="px-2 py-2 bg-blue-50">
+                  <td className="px-1 py-1 bg-blue-50">
                     <input
                       type="number"
                       step="0.1"
                       min="0"
                       value={row['UPS Cost']}
                       onChange={(e) => handleUPSCostChange(idx, e.target.value)}
-                      className="w-20 px-2 py-1 border-2 border-blue-300 focus:border-blue-600 focus:outline-none text-sm text-right font-mono font-bold bg-white text-gray-900"
+                      className="w-14 px-1 py-0.5 border border-blue-300 focus:border-blue-600 focus:outline-none text-[11px] text-right font-mono font-bold bg-white text-gray-900"
                       data-testid={`ups-cost-input-${idx}`}
                     />
-                    <span className="ml-1 text-sm text-gray-900">€</span>
                   </td>
                   
-                  <td className="px-2 py-2 text-sm text-right font-mono text-gray-700">€{row['Operational Cost']}</td>
-                  <td className="px-2 py-2 text-sm text-right font-mono text-gray-700">€{row.Commission}</td>
-                  <td
-                    className={`px-2 py-2 text-sm text-right font-mono font-bold ${
-                      row['Margin/Unit'] < 0 ? 'text-red-600' : 'text-gray-900'
-                    }`}
-                  >
-                    €{row['Margin/Unit']}
-                  </td>
-                  <td
-                    className={`px-2 py-2 text-sm text-right font-mono font-bold ${
-                      row['Margin %'] < 0 ? 'text-red-600' : 'text-gray-900'
-                    }`}
-                  >
-                    {row['Margin %']}%
-                  </td>
-                  <td
-                    className={`px-2 py-2 text-sm text-right font-mono font-bold ${
-                      row['Total Margin'] < 0 ? 'text-red-600' : 'text-gray-900'
-                    }`}
-                  >
-                    €{row['Total Margin']}
-                  </td>
-                  <td className="px-2 py-2 text-sm text-right font-mono text-gray-600">
-                    {row['Stock Quantity'] > 0 ? row['Stock Quantity'] : '-'}
-                  </td>
-                  <td className="px-2 py-2 text-sm text-right font-mono text-gray-600">
-                    {row['Sales Units (30d)'] > 0 ? row['Sales Units (30d)'] : '-'}
-                  </td>
+                  <td className="px-1 py-1 text-[11px] text-right font-mono text-gray-900">€{row['Total Margin']}</td>
+                  <td className="px-1 py-1 text-[11px] text-right font-mono text-gray-900">{row['Margin %']}%</td>
                   
                   {/* Editable Box Number - only for approved items */}
-                  <td className="px-2 py-2 bg-yellow-50">
+                  <td className="px-1 py-1 bg-yellow-50">
                     {approvalStatus === 'approved' ? (
                       <input
                         type="text"
                         value={row['Box Number'] || ''}
                         onChange={(e) => handleBoxNumberChange(idx, e.target.value)}
-                        placeholder="Box #"
-                        className="w-16 px-2 py-1 border-2 border-yellow-500 focus:border-yellow-600 focus:outline-none text-sm text-center font-mono font-bold bg-white text-gray-900"
+                        placeholder="Box"
+                        className="w-14 px-1 py-0.5 border border-yellow-500 focus:border-yellow-600 focus:outline-none text-[11px] text-center font-mono font-bold bg-white text-gray-900"
                         data-testid={`box-number-input-${idx}`}
                       />
                     ) : (
-                      <span className="text-gray-400 text-xs">-</span>
+                      <span className="text-gray-400 text-[10px]">-</span>
                     )}
                   </td>
                   
                   {/* Approve and Reject Buttons */}
-                  <td className="px-2 py-2 text-center">
-                    <div className="flex gap-2 justify-center">
+                  <td className="px-1 py-1 text-center">
+                    <div className="flex gap-1 justify-center">
                       {approvalStatus === 'approved' ? (
                         <button
                           onClick={() => handleReject(idx)}
-                          className="bg-green-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-green-700 transition-colors flex items-center gap-1"
+                          className="bg-green-600 text-white px-2 py-1 text-[10px] font-mono font-bold uppercase hover:bg-green-700 transition-colors"
                           data-testid={`approved-button-${idx}`}
                         >
-                          <Check size={14} weight="bold" />
-                          Approved
+                          ✓
                         </button>
                       ) : (
                         <button
                           onClick={() => handleApprove(idx)}
-                          className="bg-white border-2 border-gray-300 text-gray-900 px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-green-600 hover:text-white hover:border-green-600 transition-colors"
+                          className="bg-white border border-gray-300 text-gray-900 px-2 py-1 text-[10px] font-mono font-bold uppercase hover:bg-green-600 hover:text-white hover:border-green-600 transition-colors"
                           data-testid={`approve-button-${idx}`}
                         >
-                          Approve
+                          OK
                         </button>
                       )}
                       
                       {approvalStatus === 'rejected' ? (
                         <button
                           onClick={() => handleApprove(idx)}
-                          className="bg-gray-500 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-gray-600 transition-colors flex items-center gap-1"
+                          className="bg-gray-500 text-white px-2 py-1 text-[10px] font-mono font-bold uppercase hover:bg-gray-600 transition-colors"
                           data-testid={`rejected-button-${idx}`}
                         >
-                          <X size={14} weight="bold" />
-                          Rejected
+                          ✗
                         </button>
                       ) : (
                         <button
                           onClick={() => handleReject(idx)}
-                          className="bg-white border-2 border-red-500 text-red-600 px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-red-600 hover:text-white transition-colors"
+                          className="bg-white border border-red-500 text-red-600 px-2 py-1 text-[10px] font-mono font-bold uppercase hover:bg-red-600 hover:text-white transition-colors"
                           data-testid={`reject-button-${idx}`}
                         >
-                          Reject
+                          ✗
                         </button>
                       )}
                     </div>
