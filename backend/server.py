@@ -1001,7 +1001,7 @@ async def upload_files(
 
 @api_router.get("/history")
 async def get_history(request: Request):
-    user = await get_current_user(request)
+    await get_current_user(request)
     
     uploads = await db.uploads.find(
         {},
