@@ -412,6 +412,8 @@ const Dashboard = () => {
                 handleLoadUpload(uploadData);
                 setShowHistory(false);
               }}
+              currentUploadId={results?.upload_id}
+              standalone={false}
             />
           </div>
         </div>

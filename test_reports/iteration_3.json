@@ -1,0 +1,20 @@
+{
+  "summary": "Tested Upload History modal fix after refactor with standalone={false} prop. Login → header Clock icon → modal opens with full list of previous uploads (16 entries shown with filename, date, totals, approved/review counts, user email, status). Close (X) button works. LOAD button successfully restored a previous upload and rendered the Results Table + KPI metrics on dashboard. Empty white screen bug is fixed.",
+  "tested_scope": ["frontend", "integration"],
+  "passed": [
+    "Login flow (admin@poreview.com) succeeds and redirects to /dashboard",
+    "History toggle button (Clock icon in header, data-testid='history-toggle-button') opens overlay modal",
+    "Upload History modal renders content (NOT empty/white) - shows 16 prior upload cards with details: filename, timestamp, total/approved/review counts, user_email, status",
+    "Each upload row shows a working LOAD button",
+    "Close button (data-testid='close-history-button') closes the modal",
+    "LOAD click triggered GET /api/upload/{id}, dispatched handleLoadUpload, toast 'Upload loaded successfully!' shown, Results Table + KPIs + ActionBar rendered",
+    "GET /api/history returns data successfully (no JS errors in console)"
+  ],
+  "failed": [],
+  "action_items": [
+    "Note (not a regression from this fix): The loaded historical upload shows €0.00 in Total/Approved PO Amount KPIs because the saved data has 0 quantities/costs — this matches user's earlier 'all zeros' screenshot but appears to be a data-quality issue from the original Excel/processing, not the history modal. Worth investigating upload processing separately if user re-reports."
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true
+}
