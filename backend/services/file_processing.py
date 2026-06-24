@@ -16,7 +16,7 @@ def load_stock_data(file_path: str) -> dict:
         Dictionary with ASIN as key and stock info as value
     """
     try:
-        df = pd.read_excel(file_path, engine='openpyxl', header=1)
+        df = pd.read_excel(file_path, engine='openpyxl', header=0)
         stock_dict = {}
         for _, row in df.iterrows():
             asin = row.get('ASIN')
@@ -44,7 +44,7 @@ def load_sales_data(file_path: str) -> dict:
         Dictionary with ASIN as key and sales info as value
     """
     try:
-        df = pd.read_excel(file_path, engine='openpyxl', header=1)
+        df = pd.read_excel(file_path, engine='openpyxl', header=0)
         sales_dict = {}
         for _, row in df.iterrows():
             asin = row.get('ASIN')

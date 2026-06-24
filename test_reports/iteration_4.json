@@ -1,0 +1,19 @@
+{
+  "summary": "Bug fix verified: Excel header parsing (header=0) now correctly reads PO/Stock/Sales files. Backend /api/upload returns 66 items with populated PO, Vendor, Location, ASIN, EAN, Model Number, Quantity, Unit Cost, and margin calculations. UI table renders all 66 rows with 40 marked needs review.",
+  "tested_scope": ["backend", "frontend", "integration", "auth"],
+  "passed": [
+    "POST /api/auth/login with admin@poreview.com works (cookie auth)",
+    "POST /api/upload with EditLineItems.xlsx + Inventory.xlsx + Sales.xlsx returns total_items=66, needs_review=40",
+    "Sample item correctly populated: PO=86RTHWBM, Vendor=AP7RW, Location=CDG7 - Senlis Oise, ASIN=B0CBRY2VGX, EAN=5415231825882, Model=col-lam-SAND-A484_7.5x25cm, Qty=8, UnitCost=6.0, Margin%=11.0",
+    "Margin calculation produces both APPROVED and needs-review items (40/66 low margin)",
+    "Frontend login -> dashboard navigation works",
+    "Frontend file upload UI accepts all 3 files via data-testid inputs (po-file-input, stock-file-input, sales-file-input)",
+    "ResultsTable renders 'Showing 66 of 66 items', summary cards show Total €1845.55 and Needs Review = 40",
+    "Table cells display correct PO/Vendor/Location/ASIN/EAN/Model/Qty/Cost/Margin values (no empty/zero rows)"
+  ],
+  "failed": [],
+  "action_items": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true
+}

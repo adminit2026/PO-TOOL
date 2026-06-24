@@ -235,7 +235,7 @@ async def upload_files(
             buffer.write(content)
         
         # Load PO data
-        df = pd.read_excel(po_path, engine='openpyxl', header=1)
+        df = pd.read_excel(po_path, engine='openpyxl', header=0)
         
         # Load optional files
         stock_data = {}
