@@ -2,28 +2,22 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import axios from 'axios';
 import {
-  Upload,
-  DownloadSimple,
   Gear,
   Clock,
   SignOut,
-  Warning,
-  CheckCircle,
   X,
-  CheckSquare,
-  CurrencyEur,
-  TrendUp,
 } from '@phosphor-icons/react';
 import SettingsPanel from '@/components/SettingsPanel';
 import ResultsTable from '@/components/ResultsTable';
 import UploadHistory from '@/components/UploadHistory';
+import KPIMetrics from '@/components/KPIMetrics';
+import LocationBreakdown from '@/components/LocationBreakdown';
+import FileUploadSection from '@/components/FileUploadSection';
+import ActionBar from '@/components/ActionBar';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
-
-// Constants
-const BYTES_PER_KB = 1024;
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -301,6 +295,19 @@ const Dashboard = () => {
     }));
   };
 
+  const handleLoadUpload = (uploadData) => {
+    setResults({
+      upload_id: uploadData.upload_id,
+      filename: uploadData.filename,
+      total_items: uploadData.total_items,
+      needs_review: uploadData.needs_review,
+      approved: uploadData.approved,
+      timestamp: uploadData.timestamp,
+      results: uploadData.results
+    });
+    toast.success('Previous upload loaded! Continue where you left off.');
+  };
+
   const handleApproveAll = () => {
     if (!results || !results.results) return;
     
@@ -389,23 +396,23 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* History Panel */}
+      {/* History Panel - Overlay */}
       {showHistory && (
-        <div className="fixed inset-0 bg-gray-50 bg-opacity-90 z-50 flex items-center justify-center p-8">
-          <div className="bg-gray-50 border-2 border-blue-600 max-w-4xl w-full relative max-h-[80vh] overflow-hidden">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-8">
+          <div className="bg-white border-2 border-gray-300 max-w-5xl w-full relative max-h-[90vh] overflow-hidden">
             <button
               onClick={() => setShowHistory(false)}
-              className="absolute top-4 right-4 p-2 text-blue-700 hover:bg-blue-50 transition-colors z-10"
+              className="absolute top-4 right-4 p-2 text-gray-600 hover:bg-gray-100 transition-colors z-10 rounded"
               data-testid="close-history-button"
             >
               <X size={24} weight="bold" />
             </button>
-            <UploadHistory onSelectUpload={(upload) => {
-              setShowHistory(false);
-              axios.get(`${API}/results/${upload.upload_id}`, { withCredentials: true })
-                .then(({ data }) => setResults(data))
-                .catch((err) => toast.error('Failed to load upload'));
-            }} />
+            <UploadHistory 
+              onLoadUpload={(uploadData) => {
+                handleLoadUpload(uploadData);
+                setShowHistory(false);
+              }}
+            />
           </div>
         </div>
       )}
@@ -414,285 +421,47 @@ const Dashboard = () => {
       <main className="max-w-7xl mx-auto px-8 py-8">
         {/* Upload Section */}
         {!results && (
-          <div className="bg-gray-50 border-2 border-blue-600 p-8">
-            <h2 className="text-2xl font-black mb-6 text-blue-600" style={{ fontFamily: "'Courier New', monospace" }}>
-              UPLOAD PURCHASE ORDER
-            </h2>
-
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className={`border-4 border-dashed p-8 transition-colors ${
-                isDragging ? 'border-green-400 bg-blue-50' : 'border-green-800 bg-gray-50'
-              }`}
-              data-testid="file-drop-zone"
-            >
-              <div className="text-center mb-6">
-                <Upload size={48} weight="bold" className="mx-auto mb-3 text-blue-700" />
-                <p className="text-base font-mono uppercase tracking-wider mb-2 text-blue-600">
-                  Upload Excel Files
-                </p>
-                <p className="text-xs text-gray-500">Drag & drop or browse files</p>
-              </div>
-
-              {/* File Upload Sections */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* PO File */}
-                <div className="border-2 border-gray-300 p-4 bg-gray-50">
-                  <p className="text-xs font-mono font-bold uppercase tracking-wider text-blue-600 mb-2">
-                    Purchase Order *
-                  </p>
-                  <label
-                    htmlFor="po-file-input"
-                    className="block text-center bg-blue-600 text-black px-4 py-2 text-sm font-mono font-bold uppercase cursor-pointer hover:bg-blue-700 transition-colors"
-                  >
-                    {poFile ? 'Change File' : 'Browse PO'}
-                  </label>
-                  <input
-                    id="po-file-input"
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={(e) => handleFileChange(e, 'po')}
-                    className="hidden"
-                    data-testid="po-file-input"
-                  />
-                  {poFile && (
-                    <div className="mt-2">
-                      <p className="text-xs text-blue-600 truncate" title={poFile.name}>{poFile.name}</p>
-                      <p className="text-xs text-gray-500">{(poFile.size / BYTES_PER_KB).toFixed(1)} KB</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Stock File */}
-                <div className="border-2 border-gray-300 p-4 bg-gray-50">
-                  <p className="text-xs font-mono font-bold uppercase tracking-wider text-blue-600 mb-2">
-                    Stock/Inventory
-                  </p>
-                  <label
-                    htmlFor="stock-file-input"
-                    className="block text-center bg-blue-700 text-blue-600 px-4 py-2 text-sm font-mono font-bold uppercase cursor-pointer hover:bg-green-700 transition-colors"
-                  >
-                    {stockFile ? 'Change File' : 'Browse Stock'}
-                  </label>
-                  <input
-                    id="stock-file-input"
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={(e) => handleFileChange(e, 'stock')}
-                    className="hidden"
-                    data-testid="stock-file-input"
-                  />
-                  {stockFile && (
-                    <div className="mt-2">
-                      <p className="text-xs text-blue-600 truncate" title={stockFile.name}>{stockFile.name}</p>
-                      <p className="text-xs text-gray-500">{(stockFile.size / BYTES_PER_KB).toFixed(1)} KB</p>
-                    </div>
-                  )}
-                  {!stockFile && <p className="text-xs text-gray-600 mt-2">Optional</p>}
-                </div>
-
-                {/* Sales File */}
-                <div className="border-2 border-gray-300 p-4 bg-gray-50">
-                  <p className="text-xs font-mono font-bold uppercase tracking-wider text-blue-600 mb-2">
-                    Sales Data
-                  </p>
-                  <label
-                    htmlFor="sales-file-input"
-                    className="block text-center bg-blue-700 text-blue-600 px-4 py-2 text-sm font-mono font-bold uppercase cursor-pointer hover:bg-green-700 transition-colors"
-                  >
-                    {salesFile ? 'Change File' : 'Browse Sales'}
-                  </label>
-                  <input
-                    id="sales-file-input"
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={(e) => handleFileChange(e, 'sales')}
-                    className="hidden"
-                    data-testid="sales-file-input"
-                  />
-                  {salesFile && (
-                    <div className="mt-2">
-                      <p className="text-xs text-blue-600 truncate" title={salesFile.name}>{salesFile.name}</p>
-                      <p className="text-xs text-gray-500">{(salesFile.size / BYTES_PER_KB).toFixed(1)} KB</p>
-                    </div>
-                  )}
-                  {!salesFile && <p className="text-xs text-gray-600 mt-2">Optional</p>}
-                </div>
-              </div>
-            </div>
-
-            {poFile && (
-              <div className="mt-6 p-4 bg-blue-600 text-black flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-mono uppercase tracking-wider font-bold">Ready to Process</p>
-                  <p className="font-medium">
-                    {poFile.name}
-                    {stockFile && ' + Stock'}
-                    {salesFile && ' + Sales'}
-                  </p>
-                </div>
-                <button
-                  onClick={handleUpload}
-                  disabled={uploading}
-                  className="bg-gray-50 text-blue-600 px-6 py-3 font-mono font-bold uppercase tracking-wider hover:bg-gray-900 border-2 border-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  data-testid="upload-button"
-                >
-                  {uploading ? 'Processing...' : 'Process Files'}
-                </button>
-              </div>
-            )}
-          </div>
+          <FileUploadSection
+            poFile={poFile}
+            stockFile={stockFile}
+            salesFile={salesFile}
+            isDragging={isDragging}
+            uploading={uploading}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onFileChange={handleFileChange}
+            onUpload={handleUpload}
+          />
         )}
 
         {/* Results Section */}
         {results && metrics && (
           <div className="space-y-6">
-            {/* Live Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Total PO Amount */}
-              <div className="bg-gray-50 border-2 border-gray-400 p-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <CurrencyEur size={20} weight="bold" className="text-gray-700" />
-                  <p className="text-xs font-mono uppercase tracking-wider text-gray-700">Total PO Amount</p>
-                </div>
-                <p className="text-3xl font-black text-gray-900" data-testid="total-po-amount">€{metrics.totalOrderAmount}</p>
-                <p className="text-xs text-gray-500 mt-1">All line items</p>
-              </div>
+            {/* KPI Metrics */}
+            <KPIMetrics metrics={metrics} needsReviewCount={results.needs_review} />
 
-              {/* Approved PO Amount */}
-              <div className="bg-gray-50 border-2 border-green-600 p-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle size={20} weight="bold" className="text-green-600" />
-                  <p className="text-xs font-mono uppercase tracking-wider text-green-700">Approved PO Amount</p>
-                </div>
-                <p className="text-3xl font-black text-green-600" data-testid="approved-po-amount">€{metrics.approvedOrderAmount}</p>
-                <p className="text-xs text-gray-500 mt-1">{metrics.approvedCount} items approved</p>
-              </div>
-
-              {/* Approved Margin */}
-              <div className="bg-gray-50 border-2 border-blue-600 p-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendUp size={20} weight="bold" className="text-blue-600" />
-                  <p className="text-xs font-mono uppercase tracking-wider text-blue-700">Approved Margin</p>
-                </div>
-                <p className="text-3xl font-black text-blue-600" data-testid="approved-margin">€{metrics.approvedMargin}</p>
-                <p className="text-xs text-gray-500 mt-1">{metrics.marginPercentage}% margin</p>
-              </div>
-
-              {/* Needs Review */}
-              <div className="bg-gray-50 border-2 border-red-500 p-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <Warning size={20} weight="bold" className="text-red-500" />
-                  <p className="text-xs font-mono uppercase tracking-wider text-red-500">Needs Review</p>
-                </div>
-                <p className="text-3xl font-black text-red-500" data-testid="needs-review-count">{results.needs_review}</p>
-                <p className="text-xs text-gray-500 mt-1">Low margin items</p>
-              </div>
-            </div>
-
-            {/* Margin Breakdown by Location (Approved Items Only) */}
-            {metrics.locationStats && metrics.locationStats.length > 0 && (
-              <div className="bg-white border-2 border-gray-300 p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-2 font-mono uppercase tracking-wider">Margin by Location (Approved Items)</h3>
-                <p className="text-xs text-gray-600 mb-4">Real-time margin updates when items are approved</p>
-                <div className="space-y-3">
-                  {metrics.locationStats.map((loc) => (
-                    <div key={loc.location} className="flex justify-between items-center p-3 bg-gray-50 border border-gray-200">
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900 text-sm">{loc.location}</p>
-                        <p className="text-xs text-gray-600">{loc.items} approved items</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-blue-600">€{loc.totalMargin}</p>
-                        <p className="text-xs text-gray-600">{loc.marginPercentage}% margin</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Location Breakdown */}
+            <LocationBreakdown locationStats={metrics.locationStats} />
 
             {/* Action Bar */}
-            <div className="bg-white border-2 border-gray-300 p-4">
-              <div className="mb-4">
-                <p className="text-xs font-mono uppercase tracking-wider text-gray-600">Current File</p>
-                <p className="font-medium text-gray-900" data-testid="current-filename">{results.filename}</p>
-              </div>
-              
-              {/* Buttons Grid - Uniform Style */}
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
-                <button
-                  onClick={handleApproveAll}
-                  className="bg-blue-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
-                  data-testid="approve-all-button"
-                >
-                  <CheckSquare size={16} weight="bold" />
-                  Approve All
-                </button>
-                <button
-                  onClick={() => handleDownloadExport(results.upload_id)}
-                  className="bg-blue-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
-                  data-testid="download-export-button"
-                >
-                  <DownloadSimple size={16} weight="bold" />
-                  EXPORT
-                </button>
-                <button
-                  onClick={() => handleDownloadBox(results.upload_id)}
-                  className="bg-blue-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
-                  data-testid="download-box-button"
-                >
-                  <DownloadSimple size={16} weight="bold" />
-                  BOX
-                </button>
-                <button
-                  onClick={() => handleDownloadProductionSheets(results.upload_id)}
-                  className="bg-blue-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
-                  data-testid="download-production-sheets-button"
-                >
-                  <DownloadSimple size={16} weight="bold" />
-                  Prod Sheets
-                </button>
-                <button
-                  onClick={() => handleDownloadEANList(results.upload_id)}
-                  className="bg-blue-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
-                  data-testid="download-ean-list-button"
-                >
-                  <DownloadSimple size={16} weight="bold" />
-                  EAN List
-                </button>
-                <button
-                  onClick={() => handleDownloadPackingList(results.upload_id)}
-                  className="bg-blue-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
-                  data-testid="download-packing-list-button"
-                >
-                  <DownloadSimple size={16} weight="bold" />
-                  Packing
-                </button>
-                <button
-                  onClick={() => handleDownload(results.upload_id)}
-                  className="bg-blue-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
-                  data-testid="download-excel-button"
-                >
-                  <DownloadSimple size={16} weight="bold" />
-                  Analysis
-                </button>
-                <button
-                  onClick={() => {
-                    setResults(null);
-                    setPoFile(null);
-                    setStockFile(null);
-                    setSalesFile(null);
-                  }}
-                  className="bg-gray-600 text-white px-3 py-2 text-xs font-mono font-bold uppercase hover:bg-gray-700 transition-colors"
-                  data-testid="new-upload-button"
-                >
-                  New Upload
-                </button>
-              </div>
-            </div>
+            <ActionBar
+              filename={results.filename}
+              uploadId={results.upload_id}
+              onApproveAll={handleApproveAll}
+              onDownloadExport={handleDownloadExport}
+              onDownloadBox={handleDownloadBox}
+              onDownloadProductionSheets={handleDownloadProductionSheets}
+              onDownloadEANList={handleDownloadEANList}
+              onDownloadPackingList={handleDownloadPackingList}
+              onDownloadAnalysis={handleDownload}
+              onNewUpload={() => {
+                setResults(null);
+                setPoFile(null);
+                setStockFile(null);
+                setSalesFile(null);
+              }}
+            />
 
             {/* Results Table */}
             <ResultsTable 

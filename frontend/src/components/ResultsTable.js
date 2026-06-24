@@ -1,12 +1,82 @@
-import React, { useState, useEffect } from 'react';
-import { Warning, CheckCircle, Check, X, Package } from '@phosphor-icons/react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Warning, CheckCircle, Check, X, Package, CaretUp, CaretDown, Funnel, MagnifyingGlass } from '@phosphor-icons/react';
 
 const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
   const [tableData, setTableData] = useState(data || []);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [filters, setFilters] = useState({});
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     setTableData(data || []);
   }, [data]);
+
+  // Filtered and sorted data
+  const processedData = useMemo(() => {
+    let filtered = tableData;
+
+    // Apply search
+    if (searchTerm) {
+      filtered = filtered.filter(row => 
+        Object.values(row).some(value => 
+          String(value).toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      );
+    }
+
+    // Apply column filters
+    Object.keys(filters).forEach(key => {
+      if (filters[key]) {
+        filtered = filtered.filter(row =>
+          String(row[key]).toLowerCase().includes(filters[key].toLowerCase())
+        );
+      }
+    });
+
+    // Apply sorting
+    if (sortConfig.key) {
+      filtered = [...filtered].sort((a, b) => {
+        const aVal = a[sortConfig.key];
+        const bVal = b[sortConfig.key];
+        
+        // Handle numbers
+        if (!isNaN(aVal) && !isNaN(bVal)) {
+          return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+        
+        // Handle strings
+        const aStr = String(aVal).toLowerCase();
+        const bStr = String(bVal).toLowerCase();
+        if (sortConfig.direction === 'asc') {
+          return aStr < bStr ? -1 : aStr > bStr ? 1 : 0;
+        } else {
+          return bStr < aStr ? -1 : bStr > aStr ? 1 : 0;
+        }
+      });
+    }
+
+    return filtered;
+  }, [tableData, sortConfig, filters, searchTerm]);
+
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const handleFilterChange = (column, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [column]: value
+    }));
+  };
+
+  const clearFilters = () => {
+    setFilters({});
+    setSearchTerm('');
+  };
 
   if (!tableData || tableData.length === 0) {
     return (
@@ -121,29 +191,183 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
 
   return (
     <div className="bg-white border border-gray-300 w-full overflow-hidden" data-testid="results-table">
+      {/* Filter Toolbar */}
+      <div className="bg-gray-100 border-b border-gray-300 p-2 flex items-center gap-2">
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`px-2 py-1 text-[10px] font-bold flex items-center gap-1 ${showFilters ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'} border border-gray-300`}
+        >
+          <Funnel size={12} weight="bold" />
+          FILTERS
+        </button>
+        
+        <div className="flex-1 flex items-center gap-1 bg-white border border-gray-300 px-2">
+          <MagnifyingGlass size={12} className="text-gray-500" />
+          <input
+            type="text"
+            placeholder="Search all columns..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-1 py-1 text-[10px] outline-none"
+          />
+        </div>
+        
+        <span className="text-[10px] text-gray-600">
+          Showing {processedData.length} of {tableData.length} items
+        </span>
+        
+        {(Object.keys(filters).length > 0 || searchTerm) && (
+          <button
+            onClick={clearFilters}
+            className="px-2 py-1 text-[10px] font-bold bg-red-500 text-white"
+          >
+            CLEAR
+          </button>
+        )}
+      </div>
+
       <div className="w-full">
         <table className="w-full border-collapse" style={{fontSize: '8px', lineHeight: '1.2'}}>
           <thead className="bg-blue-700 text-white sticky top-0">
             <tr>
-              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600" style={{width: '40px'}}>Stat</th>
-              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600" style={{width: '50px'}}>PO</th>
-              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600" style={{width: '40px'}}>Vend</th>
-              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600" style={{width: '80px'}}>Location</th>
-              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600" style={{width: '70px'}}>ASIN</th>
-              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600" style={{width: '80px'}}>EAN</th>
-              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600" style={{width: '100px'}}>Model</th>
-              <th className="px-0.5 py-0.5 text-center font-bold uppercase bg-blue-100 text-blue-900 border-r border-blue-600" style={{width: '35px'}}>Qty</th>
-              <th className="px-0.5 py-0.5 text-center font-bold uppercase bg-blue-100 text-blue-900 border-r border-blue-600" style={{width: '40px'}}>U€</th>
-              <th className="px-0.5 py-0.5 text-center font-bold uppercase bg-blue-100 text-blue-900 border-r border-blue-600" style={{width: '40px'}}>P€</th>
-              <th className="px-0.5 py-0.5 text-center font-bold uppercase bg-blue-100 text-blue-900 border-r border-blue-600" style={{width: '40px'}}>UPS</th>
-              <th className="px-0.5 py-0.5 text-right font-bold uppercase border-r border-blue-600" style={{width: '50px'}}>Mrg€</th>
-              <th className="px-0.5 py-0.5 text-right font-bold uppercase border-r border-blue-600" style={{width: '35px'}}>%</th>
+              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600 cursor-pointer hover:bg-blue-600" style={{width: '40px'}} onClick={() => handleSort('Needs Review')}>
+                <div className="flex items-center gap-0.5">
+                  Stat
+                  {sortConfig.key === 'Needs Review' && (
+                    sortConfig.direction === 'asc' ? <CaretUp size={8} weight="bold" /> : <CaretDown size={8} weight="bold" />
+                  )}
+                </div>
+              </th>
+              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600 cursor-pointer hover:bg-blue-600" style={{width: '50px'}} onClick={() => handleSort('PO')}>
+                <div className="flex items-center gap-0.5">
+                  PO
+                  {sortConfig.key === 'PO' && (
+                    sortConfig.direction === 'asc' ? <CaretUp size={8} weight="bold" /> : <CaretDown size={8} weight="bold" />
+                  )}
+                </div>
+              </th>
+              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600 cursor-pointer hover:bg-blue-600" style={{width: '40px'}} onClick={() => handleSort('Vendor')}>
+                <div className="flex items-center gap-0.5">
+                  Vend
+                  {sortConfig.key === 'Vendor' && (
+                    sortConfig.direction === 'asc' ? <CaretUp size={8} weight="bold" /> : <CaretDown size={8} weight="bold" />
+                  )}
+                </div>
+              </th>
+              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600 cursor-pointer hover:bg-blue-600" style={{width: '80px'}} onClick={() => handleSort('Ship to Location')}>
+                <div className="flex items-center gap-0.5">
+                  Location
+                  {sortConfig.key === 'Ship to Location' && (
+                    sortConfig.direction === 'asc' ? <CaretUp size={8} weight="bold" /> : <CaretDown size={8} weight="bold" />
+                  )}
+                </div>
+              </th>
+              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600 cursor-pointer hover:bg-blue-600" style={{width: '70px'}} onClick={() => handleSort('ASIN')}>
+                <div className="flex items-center gap-0.5">
+                  ASIN
+                  {sortConfig.key === 'ASIN' && (
+                    sortConfig.direction === 'asc' ? <CaretUp size={8} weight="bold" /> : <CaretDown size={8} weight="bold" />
+                  )}
+                </div>
+              </th>
+              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600 cursor-pointer hover:bg-blue-600" style={{width: '80px'}} onClick={() => handleSort('External ID')}>
+                <div className="flex items-center gap-0.5">
+                  EAN
+                  {sortConfig.key === 'External ID' && (
+                    sortConfig.direction === 'asc' ? <CaretUp size={8} weight="bold" /> : <CaretDown size={8} weight="bold" />
+                  )}
+                </div>
+              </th>
+              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600 cursor-pointer hover:bg-blue-600" style={{width: '100px'}} onClick={() => handleSort('Model Number')}>
+                <div className="flex items-center gap-0.5">
+                  Model
+                  {sortConfig.key === 'Model Number' && (
+                    sortConfig.direction === 'asc' ? <CaretUp size={8} weight="bold" /> : <CaretDown size={8} weight="bold" />
+                  )}
+                </div>
+              </th>
+              <th className="px-0.5 py-0.5 text-center font-bold uppercase bg-blue-100 text-blue-900 border-r border-blue-600 cursor-pointer hover:bg-blue-200" style={{width: '35px'}} onClick={() => handleSort('Quantity')}>
+                <div className="flex items-center justify-center gap-0.5">
+                  Qty
+                  {sortConfig.key === 'Quantity' && (
+                    sortConfig.direction === 'asc' ? <CaretUp size={8} weight="bold" /> : <CaretDown size={8} weight="bold" />
+                  )}
+                </div>
+              </th>
+              <th className="px-0.5 py-0.5 text-center font-bold uppercase bg-blue-100 text-blue-900 border-r border-blue-600 cursor-pointer hover:bg-blue-200" style={{width: '40px'}} onClick={() => handleSort('Unit Cost')}>
+                <div className="flex items-center justify-center gap-0.5">
+                  U€
+                  {sortConfig.key === 'Unit Cost' && (
+                    sortConfig.direction === 'asc' ? <CaretUp size={8} weight="bold" /> : <CaretDown size={8} weight="bold" />
+                  )}
+                </div>
+              </th>
+              <th className="px-0.5 py-0.5 text-center font-bold uppercase bg-blue-100 text-blue-900 border-r border-blue-600 cursor-pointer hover:bg-blue-200" style={{width: '40px'}} onClick={() => handleSort('Production Cost')}>
+                <div className="flex items-center justify-center gap-0.5">
+                  P€
+                  {sortConfig.key === 'Production Cost' && (
+                    sortConfig.direction === 'asc' ? <CaretUp size={8} weight="bold" /> : <CaretDown size={8} weight="bold" />
+                  )}
+                </div>
+              </th>
+              <th className="px-0.5 py-0.5 text-center font-bold uppercase bg-blue-100 text-blue-900 border-r border-blue-600 cursor-pointer hover:bg-blue-200" style={{width: '40px'}} onClick={() => handleSort('UPS Cost')}>
+                <div className="flex items-center justify-center gap-0.5">
+                  UPS
+                  {sortConfig.key === 'UPS Cost' && (
+                    sortConfig.direction === 'asc' ? <CaretUp size={8} weight="bold" /> : <CaretDown size={8} weight="bold" />
+                  )}
+                </div>
+              </th>
+              <th className="px-0.5 py-0.5 text-right font-bold uppercase border-r border-blue-600 cursor-pointer hover:bg-blue-600" style={{width: '50px'}} onClick={() => handleSort('Total Margin')}>
+                <div className="flex items-center justify-end gap-0.5">
+                  Mrg€
+                  {sortConfig.key === 'Total Margin' && (
+                    sortConfig.direction === 'asc' ? <CaretUp size={8} weight="bold" /> : <CaretDown size={8} weight="bold" />
+                  )}
+                </div>
+              </th>
+              <th className="px-0.5 py-0.5 text-right font-bold uppercase border-r border-blue-600 cursor-pointer hover:bg-blue-600" style={{width: '35px'}} onClick={() => handleSort('Margin %')}>
+                <div className="flex items-center justify-end gap-0.5">
+                  %
+                  {sortConfig.key === 'Margin %' && (
+                    sortConfig.direction === 'asc' ? <CaretUp size={8} weight="bold" /> : <CaretDown size={8} weight="bold" />
+                  )}
+                </div>
+              </th>
               <th className="px-0.5 py-0.5 text-center font-bold uppercase bg-yellow-100 text-yellow-900 border-r border-blue-600" style={{width: '40px'}}>Box</th>
               <th className="px-0.5 py-0.5 text-center font-bold uppercase" style={{width: '50px'}}>Act</th>
             </tr>
+            
+            {/* Filter Row */}
+            {showFilters && (
+              <tr className="bg-gray-100 text-gray-900">
+                <td className="px-0.5 py-0.5"></td>
+                <td className="px-0.5 py-0.5">
+                  <input type="text" onChange={(e) => handleFilterChange('PO', e.target.value)} className="w-full text-[8px] px-0.5 py-0 border border-gray-300" placeholder="Filter..." />
+                </td>
+                <td className="px-0.5 py-0.5">
+                  <input type="text" onChange={(e) => handleFilterChange('Vendor', e.target.value)} className="w-full text-[8px] px-0.5 py-0 border border-gray-300" placeholder="Filter..." />
+                </td>
+                <td className="px-0.5 py-0.5">
+                  <input type="text" onChange={(e) => handleFilterChange('Ship to Location', e.target.value)} className="w-full text-[8px] px-0.5 py-0 border border-gray-300" placeholder="Filter..." />
+                </td>
+                <td className="px-0.5 py-0.5">
+                  <input type="text" onChange={(e) => handleFilterChange('ASIN', e.target.value)} className="w-full text-[8px] px-0.5 py-0 border border-gray-300" placeholder="Filter..." />
+                </td>
+                <td className="px-0.5 py-0.5">
+                  <input type="text" onChange={(e) => handleFilterChange('External ID', e.target.value)} className="w-full text-[8px] px-0.5 py-0 border border-gray-300" placeholder="Filter..." />
+                </td>
+                <td className="px-0.5 py-0.5">
+                  <input type="text" onChange={(e) => handleFilterChange('Model Number', e.target.value)} className="w-full text-[8px] px-0.5 py-0 border border-gray-300" placeholder="Filter..." />
+                </td>
+                <td colSpan="8" className="px-0.5 py-0.5 text-center text-[8px] text-gray-500">
+                  Click column headers to sort ↑↓
+                </td>
+              </tr>
+            )}
           </thead>
           <tbody style={{fontSize: '8px'}}>
-            {tableData.map((row, idx) => {
+            {processedData.map((row, idx) => {
               const needsReview = row['Needs Review'];
               const approvalStatus = row['Approval Status'] || 'pending';
               // Use unique combination of External ID and index as key
