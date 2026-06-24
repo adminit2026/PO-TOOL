@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Warning, CheckCircle, Check, X, Package, CaretUp, CaretDown, Funnel, MagnifyingGlass } from '@phosphor-icons/react';
 
 const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
@@ -10,7 +10,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
 
   useEffect(() => {
     setTableData(data || []);
-  }, [data]);
+  }, [data, setTableData]);
 
   // Filtered and sorted data
   const processedData = useMemo(() => {
@@ -49,9 +49,13 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
         const aStr = String(aVal).toLowerCase();
         const bStr = String(bVal).toLowerCase();
         if (sortConfig.direction === 'asc') {
-          return aStr < bStr ? -1 : aStr > bStr ? 1 : 0;
+          if (aStr < bStr) return -1;
+          if (aStr > bStr) return 1;
+          return 0;
         } else {
-          return bStr < aStr ? -1 : bStr > aStr ? 1 : 0;
+          if (bStr < aStr) return -1;
+          if (bStr > aStr) return 1;
+          return 0;
         }
       });
     }

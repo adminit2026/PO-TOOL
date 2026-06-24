@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setUser, setLoading]);
 
   useEffect(() => {
     checkAuth();
@@ -35,12 +35,12 @@ export const AuthProvider = ({ children }) => {
     );
     setUser(data);
     return data;
-  }, []);
+  }, [setUser]);
 
   const logout = useCallback(async () => {
     await axios.post(`${API}/auth/logout`, {}, { withCredentials: true });
     setUser(false);
-  }, []);
+  }, [setUser]);
 
   // Memoize context value to prevent unnecessary re-renders
   const contextValue = useMemo(

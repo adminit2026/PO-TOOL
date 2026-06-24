@@ -1,28 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Default commission rates by country
+const DEFAULT_COMMISSION_FR = 24.0;
+const DEFAULT_COMMISSION_ES = 37.0;
+const DEFAULT_COMMISSION_IT = 26.0;
+const DEFAULT_MINIMUM_MARGIN = 10.0;
+const DEFAULT_OPERATIONAL_COST = 0.5;
+const DEFAULT_SHIPPING_COST = 1.0;
+const DEFAULT_UPS_COST = 1.0;
+
 const SettingsPanel = ({ onClose }) => {
   const [settings, setSettings] = useState({
-    commission_fr: 24.0,
-    commission_es: 37.0,
-    commission_it: 26.0,
-    minimum_margin: 10.0,
-    operational_cost: 0.5,
-    shipping_cost: 1.0,
-    ups_cost_default: 1.0,
+    commission_fr: DEFAULT_COMMISSION_FR,
+    commission_es: DEFAULT_COMMISSION_ES,
+    commission_it: DEFAULT_COMMISSION_IT,
+    minimum_margin: DEFAULT_MINIMUM_MARGIN,
+    operational_cost: DEFAULT_OPERATIONAL_COST,
+    shipping_cost: DEFAULT_SHIPPING_COST,
+    ups_cost_default: DEFAULT_UPS_COST,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     try {
       const { data } = await axios.get(`${API}/settings`, { withCredentials: true });
       setSettings(data);
@@ -31,7 +36,11 @@ const SettingsPanel = ({ onClose }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [setSettings, setLoading]);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   const handleSave = async () => {
     setSaving(true);

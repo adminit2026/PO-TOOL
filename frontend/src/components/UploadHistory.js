@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ClockCounterClockwise, FolderOpen, CheckCircle, Package } from '@phosphor-icons/react';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -13,22 +13,23 @@ const UploadHistory = ({ onLoadUpload, currentUploadId, standalone = true }) => 
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
 
-  useEffect(() => {
-    loadHistory();
-  }, []);
-
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     try {
       const response = await axios.get(`${API}/history`, {
         withCredentials: true
       });
       setHistory(response.data);
     } catch (error) {
-      console.error('Failed to load history:', error);
+      // Silent fail - history is optional feature
+      toast.error('Failed to load upload history');
     } finally {
       setLoading(false);
     }
-  };
+  }, [setHistory, setLoading]);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
 
   const handleLoadUpload = async (uploadId) => {
     try {
@@ -70,17 +71,23 @@ const UploadHistory = ({ onLoadUpload, currentUploadId, standalone = true }) => 
     return 'bg-yellow-50 border-yellow-300';
   };
 
-  // Content component for history list
-  const HistoryContent = () => (
-    <div className="overflow-y-auto max-h-[540px] p-4">
-      {loading ? (
-        <div className="text-center py-8 text-gray-500">Loading history...</div>
-      ) : history.length === 0 ? (
+  // Render history list content
+  const renderHistoryContent = useMemo(() => {
+    if (loading) {
+      return <div className="text-center py-8 text-gray-500">Loading history...</div>;
+    }
+    
+    if (history.length === 0) {
+      return (
         <div className="text-center py-8 text-gray-500">
           <FolderOpen size={48} className="mx-auto mb-2 text-gray-300" />
           <p>No previous uploads found</p>
         </div>
-      ) : (
+      );
+    }
+    
+    return (
+      <div className="overflow-y-auto max-h-[540px] p-4">
         <div className="space-y-3">
           {history.map((upload) => (
             <div
@@ -130,13 +137,13 @@ const UploadHistory = ({ onLoadUpload, currentUploadId, standalone = true }) => 
             </div>
           ))}
         </div>
-      )}
-    </div>
-  );
+      </div>
+    );
+  }, [loading, history, currentUploadId, handleLoadUpload, getStatusIcon, getStatusColor, formatDate]);
 
   // If not standalone, just return the content
   if (!standalone) {
-    return <HistoryContent />;
+    return renderHistoryContent;
   }
 
   // Standalone mode with toggle button and panel
@@ -173,7 +180,7 @@ const UploadHistory = ({ onLoadUpload, currentUploadId, standalone = true }) => 
             </button>
           </div>
 
-          <HistoryContent />
+          {renderHistoryContent}
         </div>
       )}
     </div>

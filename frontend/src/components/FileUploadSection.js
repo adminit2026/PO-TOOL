@@ -1,6 +1,7 @@
 import React from 'react';
 import { Upload } from '@phosphor-icons/react';
 
+// Constants
 const BYTES_PER_KB = 1024;
 
 /**
