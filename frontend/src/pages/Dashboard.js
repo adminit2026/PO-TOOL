@@ -260,11 +260,11 @@ const Dashboard = () => {
       const link = document.createElement('a');
       const date = new Date().toISOString().slice(0,10).replace(/-/g,'');
       link.href = url;
-      link.setAttribute('download', `${date}-EANList.csv`);
+      link.setAttribute('download', `${date}-EANLists.zip`);
       document.body.appendChild(link);
       link.click();
       link.remove();
-      toast.success('EAN List downloaded!');
+      toast.success('EAN Lists downloaded! (ZIP file with multiple CSVs)');
     } catch (error) {
       toast.error('Failed to download EAN List');
     }
