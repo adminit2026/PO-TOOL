@@ -120,29 +120,29 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
   };
 
   return (
-    <div className="bg-white border-2 border-gray-300" data-testid="results-table">
-      <div className="overflow-x-auto">
-        <table className="w-full">
+    <div className="bg-white border border-gray-300 w-full overflow-hidden" data-testid="results-table">
+      <div className="w-full">
+        <table className="w-full border-collapse" style={{fontSize: '8px', lineHeight: '1.2'}}>
           <thead className="bg-blue-700 text-white sticky top-0">
             <tr>
-              <th className="px-1 py-2 text-left text-[10px] font-mono font-bold uppercase tracking-wider">Status</th>
-              <th className="px-1 py-2 text-left text-[10px] font-mono font-bold uppercase tracking-wider">PO</th>
-              <th className="px-1 py-2 text-left text-[10px] font-mono font-bold uppercase tracking-wider">Vendor</th>
-              <th className="px-1 py-2 text-left text-[10px] font-mono font-bold uppercase tracking-wider">Location</th>
-              <th className="px-1 py-2 text-left text-[10px] font-mono font-bold uppercase tracking-wider">ASIN</th>
-              <th className="px-1 py-2 text-left text-[10px] font-mono font-bold uppercase tracking-wider">EAN</th>
-              <th className="px-1 py-2 text-left text-[10px] font-mono font-bold uppercase tracking-wider">Model</th>
-              <th className="px-1 py-2 text-center text-[10px] font-mono font-bold uppercase tracking-wider bg-blue-100 text-blue-900">Qty</th>
-              <th className="px-1 py-2 text-center text-[10px] font-mono font-bold uppercase tracking-wider bg-blue-100 text-blue-900">Unit€</th>
-              <th className="px-1 py-2 text-center text-[10px] font-mono font-bold uppercase tracking-wider bg-blue-100 text-blue-900">Prod€</th>
-              <th className="px-1 py-2 text-center text-[10px] font-mono font-bold uppercase tracking-wider bg-blue-100 text-blue-900">UPS€</th>
-              <th className="px-1 py-2 text-right text-[10px] font-mono font-bold uppercase tracking-wider">Margin€</th>
-              <th className="px-1 py-2 text-right text-[10px] font-mono font-bold uppercase tracking-wider">Margin%</th>
-              <th className="px-1 py-2 text-center text-[10px] font-mono font-bold uppercase tracking-wider bg-yellow-100 text-yellow-900">Box#</th>
-              <th className="px-1 py-2 text-center text-[10px] font-mono font-bold uppercase tracking-wider bg-blue-600 text-white">Actions</th>
+              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600" style={{width: '40px'}}>Stat</th>
+              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600" style={{width: '50px'}}>PO</th>
+              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600" style={{width: '40px'}}>Vend</th>
+              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600" style={{width: '80px'}}>Location</th>
+              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600" style={{width: '70px'}}>ASIN</th>
+              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600" style={{width: '80px'}}>EAN</th>
+              <th className="px-0.5 py-0.5 text-left font-bold uppercase border-r border-blue-600" style={{width: '100px'}}>Model</th>
+              <th className="px-0.5 py-0.5 text-center font-bold uppercase bg-blue-100 text-blue-900 border-r border-blue-600" style={{width: '35px'}}>Qty</th>
+              <th className="px-0.5 py-0.5 text-center font-bold uppercase bg-blue-100 text-blue-900 border-r border-blue-600" style={{width: '40px'}}>U€</th>
+              <th className="px-0.5 py-0.5 text-center font-bold uppercase bg-blue-100 text-blue-900 border-r border-blue-600" style={{width: '40px'}}>P€</th>
+              <th className="px-0.5 py-0.5 text-center font-bold uppercase bg-blue-100 text-blue-900 border-r border-blue-600" style={{width: '40px'}}>UPS</th>
+              <th className="px-0.5 py-0.5 text-right font-bold uppercase border-r border-blue-600" style={{width: '50px'}}>Mrg€</th>
+              <th className="px-0.5 py-0.5 text-right font-bold uppercase border-r border-blue-600" style={{width: '35px'}}>%</th>
+              <th className="px-0.5 py-0.5 text-center font-bold uppercase bg-yellow-100 text-yellow-900 border-r border-blue-600" style={{width: '40px'}}>Box</th>
+              <th className="px-0.5 py-0.5 text-center font-bold uppercase" style={{width: '50px'}}>Act</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody style={{fontSize: '8px'}}>
             {tableData.map((row, idx) => {
               const needsReview = row['Needs Review'];
               const approvalStatus = row['Approval Status'] || 'pending';
@@ -152,124 +152,130 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
               return (
                 <tr
                   key={uniqueKey}
-                  className={`border-b border-gray-200 hover:bg-gray-50 transition-colors ${
-                    needsReview ? 'bg-red-100 border-l-4 border-l-red-400' : 'bg-white'
-                  } ${approvalStatus === 'approved' ? 'border-l-4 border-l-green-600 bg-green-50' : ''} ${approvalStatus === 'rejected' ? 'border-l-4 border-l-gray-500 opacity-60 bg-gray-100' : ''}`}
+                  className={`border-b border-gray-200 hover:bg-gray-50 ${
+                    needsReview ? 'bg-red-100 border-l-2 border-l-red-400' : 'bg-white'
+                  } ${approvalStatus === 'approved' ? 'border-l-2 border-l-green-600 bg-green-50' : ''} ${approvalStatus === 'rejected' ? 'border-l-2 border-l-gray-500 opacity-60 bg-gray-100' : ''}`}
                   data-testid={needsReview ? 'needs-review-row' : 'approved-row'}
                 >
-                  <td className="px-2 py-2">
+                  <td className="px-0.5 py-0.5">
                     {(() => {
                       if (needsReview) {
                         return (
-                          <div className="flex items-center gap-1 text-red-600">
-                            <Warning size={16} weight="bold" />
-                            <span className="text-xs font-mono font-bold">REVIEW</span>
+                          <div className="flex items-center gap-0.5 text-red-600">
+                            <Warning size={10} weight="bold" />
+                            <span className="text-[8px] font-bold">!</span>
                           </div>
                         );
                       }
                       if (approvalStatus === 'approved') {
                         return (
-                          <div className="flex items-center gap-1 text-green-600">
-                            <CheckCircle size={16} weight="bold" />
-                            <span className="text-xs font-mono font-bold">APPROVED</span>
+                          <div className="flex items-center gap-0.5 text-green-600">
+                            <CheckCircle size={10} weight="bold" />
+                            <span className="text-[8px] font-bold">✓</span>
                           </div>
                         );
                       }
                       return (
-                        <div className="flex items-center gap-1 text-gray-600">
-                          <CheckCircle size={16} weight="bold" />
-                          <span className="text-xs font-mono font-bold">OK</span>
+                        <div className="flex items-center gap-0.5 text-gray-600">
+                          <CheckCircle size={10} weight="bold" />
+                          <span className="text-[8px] font-bold">OK</span>
                         </div>
                       );
                     })()}
                   </td>
-                  <td className="px-1 py-1 text-[11px] font-mono text-gray-900">{row.PO}</td>
-                  <td className="px-1 py-1 text-[11px] font-mono text-gray-900">{row.Vendor}</td>
-                  <td className="px-1 py-1 text-[11px] max-w-[120px] truncate text-gray-700" title={row['Ship to Location']}>
+                  <td className="px-0.5 py-0.5 text-[8px]">{row.PO}</td>
+                  <td className="px-0.5 py-0.5 text-[8px]">{row.Vendor}</td>
+                  <td className="px-0.5 py-0.5 text-[8px] truncate" title={row['Ship to Location']} style={{maxWidth: '80px'}}>
                     {row['Ship to Location']}
                   </td>
-                  <td className="px-1 py-1 text-[11px] font-mono text-gray-900">{row.ASIN}</td>
-                  <td className="px-1 py-1 text-[11px] font-mono text-gray-700">{row['External ID']}</td>
-                  <td className="px-1 py-1 text-[11px] text-gray-700 max-w-[150px] truncate" title={row['Model Number']}>{row['Model Number']}</td>
+                  <td className="px-0.5 py-0.5 text-[8px]">{row.ASIN}</td>
+                  <td className="px-0.5 py-0.5 text-[8px]">{row['External ID']}</td>
+                  <td className="px-0.5 py-0.5 text-[8px] truncate" title={row['Model Number']} style={{maxWidth: '100px'}}>{row['Model Number']}</td>
                   
                   {/* Editable Quantity */}
-                  <td className="px-1 py-1 bg-blue-50">
+                  <td className="px-0.5 py-0.5 bg-blue-50">
                     <input
                       type="number"
                       step="1"
                       min="0"
                       value={row['Quantity']}
                       onChange={(e) => handleQuantityChange(idx, e.target.value)}
-                      className="w-12 px-1 py-0.5 border border-blue-300 focus:border-blue-600 focus:outline-none text-[11px] text-center font-mono font-bold bg-white text-gray-900"
+                      className="w-full px-0.5 py-0 border border-blue-300 focus:border-blue-600 focus:outline-none text-[8px] text-center font-bold bg-white"
+                      style={{height: '16px'}}
                       data-testid={`quantity-input-${idx}`}
                     />
                   </td>
                   
                   {/* Editable Unit Cost */}
-                  <td className="px-1 py-1 bg-blue-50">
+                  <td className="px-0.5 py-0.5 bg-blue-50">
                     <input
                       type="number"
                       step="0.1"
                       min="0"
                       value={row['Unit Cost']}
                       onChange={(e) => handleUnitCostChange(idx, e.target.value)}
-                      className="w-14 px-1 py-0.5 border border-blue-300 focus:border-blue-600 focus:outline-none text-[11px] text-right font-mono font-bold bg-white text-gray-900"
+                      className="w-full px-0.5 py-0 border border-blue-300 focus:border-blue-600 focus:outline-none text-[8px] text-right font-bold bg-white"
+                      style={{height: '16px'}}
                       data-testid={`unit-cost-input-${idx}`}
                     />
                   </td>
                   
                   {/* Editable Production Cost */}
-                  <td className="px-1 py-1 bg-blue-50">
+                  <td className="px-0.5 py-0.5 bg-blue-50">
                     <input
                       type="number"
                       step="0.1"
                       min="0"
                       value={row['Production Cost']}
                       onChange={(e) => handleProductionCostChange(idx, e.target.value)}
-                      className="w-14 px-1 py-0.5 border border-blue-300 focus:border-blue-600 focus:outline-none text-[11px] text-right font-mono font-bold bg-white text-gray-900"
+                      className="w-full px-0.5 py-0 border border-blue-300 focus:border-blue-600 focus:outline-none text-[8px] text-right font-bold bg-white"
+                      style={{height: '16px'}}
                       data-testid={`prod-cost-input-${idx}`}
                     />
                   </td>
                   
                   {/* Editable UPS Cost */}
-                  <td className="px-1 py-1 bg-blue-50">
+                  <td className="px-0.5 py-0.5 bg-blue-50">
                     <input
                       type="number"
                       step="0.1"
                       min="0"
                       value={row['UPS Cost']}
                       onChange={(e) => handleUPSCostChange(idx, e.target.value)}
-                      className="w-14 px-1 py-0.5 border border-blue-300 focus:border-blue-600 focus:outline-none text-[11px] text-right font-mono font-bold bg-white text-gray-900"
+                      className="w-full px-0.5 py-0 border border-blue-300 focus:border-blue-600 focus:outline-none text-[8px] text-right font-bold bg-white"
+                      style={{height: '16px'}}
                       data-testid={`ups-cost-input-${idx}`}
                     />
                   </td>
                   
-                  <td className="px-1 py-1 text-[11px] text-right font-mono text-gray-900">€{row['Total Margin']}</td>
-                  <td className="px-1 py-1 text-[11px] text-right font-mono text-gray-900">{row['Margin %']}%</td>
+                  <td className="px-0.5 py-0.5 text-[8px] text-right font-bold">€{row['Total Margin']}</td>
+                  <td className="px-0.5 py-0.5 text-[8px] text-right font-bold">{row['Margin %']}%</td>
                   
-                  {/* Editable Box Number - only for approved items */}
-                  <td className="px-1 py-1 bg-yellow-50">
+                  {/* Editable Box Number */}
+                  <td className="px-0.5 py-0.5 bg-yellow-50">
                     {approvalStatus === 'approved' ? (
                       <input
                         type="text"
                         value={row['Box Number'] || ''}
                         onChange={(e) => handleBoxNumberChange(idx, e.target.value)}
                         placeholder="Box"
-                        className="w-14 px-1 py-0.5 border border-yellow-500 focus:border-yellow-600 focus:outline-none text-[11px] text-center font-mono font-bold bg-white text-gray-900"
+                        className="w-full px-0.5 py-0 border border-yellow-500 focus:border-yellow-600 focus:outline-none text-[8px] text-center font-bold bg-white"
+                        style={{height: '16px'}}
                         data-testid={`box-number-input-${idx}`}
                       />
                     ) : (
-                      <span className="text-gray-400 text-[10px]">-</span>
+                      <span className="text-gray-400 text-[8px]">-</span>
                     )}
                   </td>
                   
                   {/* Approve and Reject Buttons */}
-                  <td className="px-1 py-1 text-center">
-                    <div className="flex gap-1 justify-center">
+                  <td className="px-0.5 py-0.5 text-center">
+                    <div className="flex gap-0.5 justify-center">
                       {approvalStatus === 'approved' ? (
                         <button
                           onClick={() => handleReject(idx)}
-                          className="bg-green-600 text-white px-2 py-1 text-[10px] font-mono font-bold uppercase hover:bg-green-700 transition-colors"
+                          className="bg-green-600 text-white px-1 py-0.5 text-[8px] font-bold hover:bg-green-700"
+                          style={{minWidth: '20px', height: '16px'}}
                           data-testid={`approved-button-${idx}`}
                         >
                           ✓
@@ -277,17 +283,19 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                       ) : (
                         <button
                           onClick={() => handleApprove(idx)}
-                          className="bg-white border border-gray-300 text-gray-900 px-2 py-1 text-[10px] font-mono font-bold uppercase hover:bg-green-600 hover:text-white hover:border-green-600 transition-colors"
+                          className="bg-white border border-gray-300 text-gray-900 px-1 py-0.5 text-[8px] font-bold hover:bg-green-600 hover:text-white"
+                          style={{minWidth: '20px', height: '16px'}}
                           data-testid={`approve-button-${idx}`}
                         >
-                          OK
+                          ✓
                         </button>
                       )}
                       
                       {approvalStatus === 'rejected' ? (
                         <button
                           onClick={() => handleApprove(idx)}
-                          className="bg-gray-500 text-white px-2 py-1 text-[10px] font-mono font-bold uppercase hover:bg-gray-600 transition-colors"
+                          className="bg-gray-500 text-white px-1 py-0.5 text-[8px] font-bold hover:bg-gray-600"
+                          style={{minWidth: '20px', height: '16px'}}
                           data-testid={`rejected-button-${idx}`}
                         >
                           ✗
@@ -295,7 +303,8 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                       ) : (
                         <button
                           onClick={() => handleReject(idx)}
-                          className="bg-white border border-red-500 text-red-600 px-2 py-1 text-[10px] font-mono font-bold uppercase hover:bg-red-600 hover:text-white transition-colors"
+                          className="bg-white border border-red-500 text-red-600 px-1 py-0.5 text-[8px] font-bold hover:bg-red-600 hover:text-white"
+                          style={{minWidth: '20px', height: '16px'}}
                           data-testid={`reject-button-${idx}`}
                         >
                           ✗
