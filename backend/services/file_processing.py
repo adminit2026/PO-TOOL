@@ -28,17 +28,18 @@ def load_stock_data(file_path: str) -> dict:
         Dictionary with ASIN as key and stock info as value
     """
     try:
-        df = pd.read_excel(file_path, engine='openpyxl', header=0)
+        df = pd.read_excel(file_path, engine='openpyxl', header=1)
         stock_dict = {}
         for _, row in df.iterrows():
-            asin = row.get('ASIN')
-            if pd.notna(asin):
-                stock_qty = row.get('Sellable On Hand Units', 0)
-                stock_val = row.get('Sellable On Hand Inventory', 0)
-                stock_dict[asin] = {
-                    'stock_quantity': int(stock_qty) if pd.notna(stock_qty) and stock_qty else 0,
-                    'stock_value': float(stock_val) if pd.notna(stock_val) and stock_val else 0.0
+            asin = safe_get_value(row, 'ASIN', '')
+            if asin and pd.notna(asin):
+                stock_qty = safe_get_value(row, 'Sellable On Hand Units', 0)
+                stock_val = safe_get_value(row, 'Sellable On Hand Inventory', 0)
+                stock_dict[str(asin).strip()] = {
+                    'stock_quantity': int(float(stock_qty)) if stock_qty else 0,
+                    'stock_value': float(stock_val) if stock_val else 0.0
                 }
+        logging.info(f"Loaded {len(stock_dict)} stock records")
         return stock_dict
     except Exception as e:
         logging.error(f"Error loading stock data: {e}")
@@ -56,17 +57,18 @@ def load_sales_data(file_path: str) -> dict:
         Dictionary with ASIN as key and sales info as value
     """
     try:
-        df = pd.read_excel(file_path, engine='openpyxl', header=0)
+        df = pd.read_excel(file_path, engine='openpyxl', header=1)
         sales_dict = {}
         for _, row in df.iterrows():
-            asin = row.get('ASIN')
-            if pd.notna(asin):
-                units = row.get('Dispatched units', 0)
-                revenue = row.get('Dispatched revenue', 0)
-                sales_dict[asin] = {
-                    'sales_units': int(units) if pd.notna(units) and units else 0,
-                    'sales_revenue': float(revenue) if pd.notna(revenue) and revenue else 0.0
+            asin = safe_get_value(row, 'ASIN', '')
+            if asin and pd.notna(asin):
+                units = safe_get_value(row, 'Dispatched units', 0)
+                revenue = safe_get_value(row, 'Dispatched revenue', 0)
+                sales_dict[str(asin).strip()] = {
+                    'sales_units': int(float(units)) if units else 0,
+                    'sales_revenue': float(revenue) if revenue else 0.0
                 }
+        logging.info(f"Loaded {len(sales_dict)} sales records")
         return sales_dict
     except Exception as e:
         logging.error(f"Error loading sales data: {e}")
@@ -97,9 +99,10 @@ def calculate_order_costs(df: pd.DataFrame, settings: dict, stock_data: dict, sa
         quantity = float(quantity) if quantity else 0
         unit_cost = float(unit_cost) if unit_cost else 0
         
-        # Get stock and sales data
-        stock_info = stock_data.get(asin, {})
-        sales_info = sales_data.get(asin, {})
+        # Get stock and sales data (normalize ASIN for lookup)
+        asin_key = str(asin).strip() if asin else ''
+        stock_info = stock_data.get(asin_key, {})
+        sales_info = sales_data.get(asin_key, {})
         
         # Simple production cost estimation (40% of unit cost)
         production_cost = unit_cost * 0.4

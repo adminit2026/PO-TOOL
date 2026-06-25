@@ -1,0 +1,22 @@
+{
+  "summary": "Tested PO Review Stock Quantity & Sales Units columns end-to-end. Uploaded all 3 files (PO/Stock/Sales). Backend /api/upload returns Stock Quantity and Sales Units (30d) per item. Counts match spec: 45/66 stock>0 and 44/66 sales>0. Sample ASIN B0CBRY2VGX shows Stock:37, Sales:17 in both backend response and UI. UI displays STK (green) and SLS (purple) columns between MODEL and QTY. Sortable headers work. Status banner shows 'Stock data included. Sales data included.'",
+  "tested_scope": ["backend", "frontend", "integration", "auth"],
+  "passed": [
+    "Login POST /api/auth/login (cookie-based) works",
+    "POST /api/upload accepts po_file+stock_file+sales_file and returns 66 results",
+    "Backend: 45/66 rows have Stock Quantity > 0",
+    "Backend: 44/66 rows have Sales Units (30d) > 0",
+    "Backend: ASIN B0CBRY2VGX -> Stock=37, Sales=17 (matches expected)",
+    "Frontend renders STK (green bg) and SLS (purple bg) columns between MODEL and QTY",
+    "UI shows B0CBRY2VGX row with STK=37, SLS=17",
+    "Multiple non-zero stock/sales values visible across rows (37,7,2,2,7,6 etc.)",
+    "Click on STK column header triggers sorting (no errors)",
+    "Status notification confirms 'Stock data included' & 'Sales data included'"
+  ],
+  "failed": [],
+  "action_items": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true,
+  "notes": "Test script had a minor case-sensitive header check ('Stk' vs rendered 'STK') that printed an assertion error; screenshot and DOM dump confirm columns are correct. No product issue."
+}
