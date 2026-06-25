@@ -1,0 +1,20 @@
+{
+  "summary": "Tested smart column detection feature with new PO file PO_20260624_FR_ADV.xlsx. Backend upload API and frontend dashboard both correctly process all 19 line items with smart column detection. All required fields (PO, Vendor, ASIN, Model Number/SKU, Quantity, Unit Cost) detected and populated. Margin calculations working. 15 items flagged as Needs Review (low margin). EditLineItems.xlsx not present in /tmp so backward-compat upload via API was not executed (smart_column_detector code path is the same).",
+  "tested_scope": ["backend", "frontend", "auth", "integration"],
+  "passed": [
+    "Auth login (admin@poreview.com) returns 200 and sets cookies",
+    "POST /api/upload with PO_20260624_FR_ADV.xlsx returns 200, upload_id, total_items=19, needs_review=15",
+    "Smart detection mapped: PO=Bulkbuy, Vendor=AP7RW, ASIN, Model Number (SKU), Quantity, Unit Cost - all populated, no rows missing qty/cost",
+    "Margin% computed for all rows (e.g. 25.47%, 26.74%, -17.57%)",
+    "Frontend login -> /dashboard, file upload UI processed file and rendered 19 tbody rows",
+    "UI summary cards correct: Total PO €3799.92, Needs Review 15",
+    "Data integration backend<->frontend verified (ASIN B07H2HL5XZ visible in table, qty 13, U.€ 14.25 match API)"
+  ],
+  "failed": [],
+  "action_items": [
+    "Optional: place EditLineItems.xlsx in /tmp/ to verify backward-compat via automated test (manual check by main agent recommended; same code path)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true
+}

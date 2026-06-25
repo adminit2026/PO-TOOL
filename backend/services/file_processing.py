@@ -3,6 +3,18 @@ File processing utilities for loading and processing Excel files
 """
 import logging
 import pandas as pd
+import math
+
+
+def safe_get_value(row, key, default):
+    """Safely get value from row, handling NaN and None"""
+    val = row.get(key, default)
+    if pd.isna(val) or val is None:
+        return default
+    # Handle infinity
+    if isinstance(val, (int, float)) and math.isinf(val):
+        return default
+    return val
 
 
 def load_stock_data(file_path: str) -> dict:
@@ -77,9 +89,13 @@ def calculate_order_costs(df: pd.DataFrame, settings: dict, stock_data: dict, sa
     results = []
     
     for idx, row in df.iterrows():
-        asin = row.get('ASIN', '')
-        quantity = row.get('Quantity Requested', 0) or row.get('Expected Quantity', 0) or 0
-        unit_cost = row.get('Unit Cost', 0) or 0
+        asin = safe_get_value(row, 'ASIN', '')
+        quantity = safe_get_value(row, 'Quantity Requested', 0) or safe_get_value(row, 'Expected Quantity', 0) or 0
+        unit_cost = safe_get_value(row, 'Unit Cost', 0) or 0
+        
+        # Convert to proper types
+        quantity = float(quantity) if quantity else 0
+        unit_cost = float(unit_cost) if unit_cost else 0
         
         # Get stock and sales data
         stock_info = stock_data.get(asin, {})
@@ -112,14 +128,14 @@ def calculate_order_costs(df: pd.DataFrame, settings: dict, stock_data: dict, sa
         status = "NEEDS_REVIEW" if needs_review else "APPROVED"
         
         result = {
-            'PO': row.get('PO', ''),
-            'Vendor': row.get('Vendor', ''),
-            'Ship to Location': row.get('Warehouse', ''),
-            'ASIN': asin,
-            'External ID': row.get('External ID', ''),
-            'Model Number': row.get('Model Number', ''),
-            'Title': row.get('Title', ''),
-            'Quantity': quantity,
+            'PO': str(safe_get_value(row, 'PO', '')),
+            'Vendor': str(safe_get_value(row, 'Vendor', '')),
+            'Ship to Location': str(safe_get_value(row, 'Warehouse', '')),
+            'ASIN': str(asin),
+            'External ID': str(safe_get_value(row, 'External ID', '')),
+            'Model Number': str(safe_get_value(row, 'Model Number', '')),
+            'Title': str(safe_get_value(row, 'Title', '')),
+            'Quantity': int(quantity),
             'Unit Cost': round(unit_cost, 2),
             'Production Cost': round(production_cost, 2),
             'UPS Cost': round(ups_cost, 2),

@@ -34,6 +34,7 @@ from services.file_processing import (
     load_sales_data,
     calculate_order_costs
 )
+from services.smart_column_detector import load_excel_with_smart_detection
 from services.excel_generators import (
     create_excel_with_approval,
     create_export_file,
@@ -234,8 +235,9 @@ async def upload_files(
             content = await po_file.read()
             buffer.write(content)
         
-        # Load PO data
-        df = pd.read_excel(po_path, engine='openpyxl', header=0)
+        # Load PO data with smart column detection
+        df, column_mapping = load_excel_with_smart_detection(str(po_path))
+        logging.info(f"Smart detection found columns: {column_mapping}")
         
         # Load optional files
         stock_data = {}
