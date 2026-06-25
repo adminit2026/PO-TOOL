@@ -1,0 +1,28 @@
+{
+  "summary": "Frontend bug-fix verified: ResultsTable now renders new STK (green bg) and SLS (purple bg) columns between MODEL and QTY. Loaded an existing upload (0b69226f) which had PO + Stock + Sales files. Columns render with correct positioning, colors, centered numeric values, and sortable headers (clicks dispatch without error). HOWEVER, every row shows 0 for both STK and SLS even though direct ASIN intersection of the PO and Stock/Sales files contains 20 / 16 matching ASINs — backend not populating the values in the response.",
+  "tested_scope": ["frontend", "integration"],
+  "passed": [
+    "STK column header present with green background, positioned between MODEL and QTY",
+    "SLS column header present with purple background, positioned after STK and before QTY",
+    "Data cells render centered numeric values with green/purple tinted backgrounds",
+    "Sortable headers respond to click (no JS errors)",
+    "Filter row / search bar still functional with new columns",
+    "Loading an upload from history opens results view with new columns visible",
+    "API /api/results returns 'Stock Quantity' and 'Sales Units (30d)' keys on every row"
+  ],
+  "failed": [
+    {
+      "area": "backend (data population)",
+      "issue": "All rows return Stock Quantity=0 and Sales Units (30d)=0 even when the uploaded Stock & Sales files contain matching ASINs (verified PO∩Stock=20, PO∩Sales=16 on upload 0b69226f). UI displays 0/0 in every row — user complaint about 'missing data' is partially valid: columns exist but values not populating.",
+      "evidence": "Direct GET /api/results/0b69226f → 0 rows with Stock>0; reproduced for 8 different upload IDs (0b69226f, 1652236d, 16c8ab9c, 24509be6, 35261248, 5f8720a7, 97deec55, eeaf9947, be9a5fb7). Fresh upload via /api/upload also returns 0 for both fields. Screenshot of loaded table confirms all 31 rows show 0/0.",
+      "priority": "HIGH"
+    }
+  ],
+  "action_items": [
+    "Investigate backend file_processing.py — Stock/Sales ASIN matching is not writing values back to the results items. Headers row in stock.xlsx is at row index 1 (second row), header row in sales.xlsx is also at row index 1; ensure parser skips the metadata banner row (row 0) before reading ASIN/Open Purchase Order Quantity/Dispatched units columns.",
+    "After backend fix, re-test by re-uploading PO+Stock+Sales and confirming non-zero STK/SLS values render in the UI."
+  ],
+  "success_rate": {"backend": "50%", "frontend": "100%"},
+  "retest_needed": true,
+  "full_testing_deferred": true
+}

@@ -290,6 +290,22 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                   )}
                 </div>
               </th>
+              <th className="px-0.5 py-0.5 text-center font-bold uppercase bg-green-100 text-green-900 border-r border-blue-600 cursor-pointer hover:bg-green-200" style={{width: '35px'}} onClick={() => handleSort('Stock Quantity')}>
+                <div className="flex items-center justify-center gap-0.5">
+                  Stk
+                  {sortConfig.key === 'Stock Quantity' && (
+                    sortConfig.direction === 'asc' ? <CaretUp size={8} weight="bold" /> : <CaretDown size={8} weight="bold" />
+                  )}
+                </div>
+              </th>
+              <th className="px-0.5 py-0.5 text-center font-bold uppercase bg-purple-100 text-purple-900 border-r border-blue-600 cursor-pointer hover:bg-purple-200" style={{width: '35px'}} onClick={() => handleSort('Sales Units (30d)')}>
+                <div className="flex items-center justify-center gap-0.5">
+                  Sls
+                  {sortConfig.key === 'Sales Units (30d)' && (
+                    sortConfig.direction === 'asc' ? <CaretUp size={8} weight="bold" /> : <CaretDown size={8} weight="bold" />
+                  )}
+                </div>
+              </th>
               <th className="px-0.5 py-0.5 text-center font-bold uppercase bg-blue-100 text-blue-900 border-r border-blue-600 cursor-pointer hover:bg-blue-200" style={{width: '35px'}} onClick={() => handleSort('Quantity')}>
                 <div className="flex items-center justify-center gap-0.5">
                   Qty
@@ -364,7 +380,7 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                 <td className="px-0.5 py-0.5">
                   <input type="text" onChange={(e) => handleFilterChange('Model Number', e.target.value)} className="w-full text-[8px] px-0.5 py-0 border border-gray-300" placeholder="Filter..." />
                 </td>
-                <td colSpan="8" className="px-0.5 py-0.5 text-center text-[8px] text-gray-500">
+                <td colSpan="10" className="px-0.5 py-0.5 text-center text-[8px] text-gray-500">
                   Click column headers to sort ↑↓
                 </td>
               </tr>
@@ -419,6 +435,16 @@ const ResultsTable = ({ data, onDataChange, onApproveAll }) => {
                   <td className="px-0.5 py-0.5 text-[8px]">{row.ASIN}</td>
                   <td className="px-0.5 py-0.5 text-[8px]">{row['External ID']}</td>
                   <td className="px-0.5 py-0.5 text-[8px] truncate" title={row['Model Number']} style={{maxWidth: '100px'}}>{row['Model Number']}</td>
+                  
+                  {/* Stock Quantity */}
+                  <td className="px-0.5 py-0.5 text-[8px] text-center font-bold bg-green-50" title="Stock Quantity from Inventory file">
+                    {row['Stock Quantity'] || 0}
+                  </td>
+                  
+                  {/* Sales Units (30d) */}
+                  <td className="px-0.5 py-0.5 text-[8px] text-center font-bold bg-purple-50" title="Sales Units (30 days) from Sales file">
+                    {row['Sales Units (30d)'] || 0}
+                  </td>
                   
                   {/* Editable Quantity */}
                   <td className="px-0.5 py-0.5 bg-blue-50">
