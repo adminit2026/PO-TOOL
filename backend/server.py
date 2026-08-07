@@ -236,8 +236,11 @@ async def upload_files(
             buffer.write(content)
         
         # Load PO data with smart column detection
+        import time
+        start_time = time.time()
         df, column_mapping = load_excel_with_smart_detection(str(po_path))
         logging.info(f"Smart detection found columns: {column_mapping}")
+        logging.info(f"Loaded {len(df)} rows from PO file in {time.time() - start_time:.2f}s")
         
         # Load optional files
         stock_data = {}
@@ -263,7 +266,9 @@ async def upload_files(
             settings = SettingsModel().dict()
         
         # Calculate costs and margins
+        calc_start = time.time()
         results_df = calculate_order_costs(df, settings, stock_data, sales_data)
+        logging.info(f"Calculated margins for {len(results_df)} items in {time.time() - calc_start:.2f}s")
         results_list = results_df.to_dict('records')
         
         # Add default approval status and box numbers

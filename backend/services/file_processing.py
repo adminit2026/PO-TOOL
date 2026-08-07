@@ -78,6 +78,7 @@ def load_sales_data(file_path: str) -> dict:
 def calculate_order_costs(df: pd.DataFrame, settings: dict, stock_data: dict, sales_data: dict) -> pd.DataFrame:
     """
     Calculate production costs, margins, and approval status with stock/sales data.
+    Optimized with vectorized operations for large files.
     
     Args:
         df: DataFrame with PO data
@@ -88,72 +89,75 @@ def calculate_order_costs(df: pd.DataFrame, settings: dict, stock_data: dict, sa
     Returns:
         DataFrame with calculated costs and margins
     """
-    results = []
+    # Extract and clean data with vectorized operations
+    df['ASIN'] = df['ASIN'].fillna('').astype(str).str.strip()
+    df['Quantity'] = pd.to_numeric(
+        df.get('Quantity Requested', df.get('Expected Quantity', 0)),
+        errors='coerce'
+    ).fillna(0)
+    df['Unit Cost'] = pd.to_numeric(df.get('Unit Cost', 0), errors='coerce').fillna(0)
     
-    for idx, row in df.iterrows():
-        asin = safe_get_value(row, 'ASIN', '')
-        quantity = safe_get_value(row, 'Quantity Requested', 0) or safe_get_value(row, 'Expected Quantity', 0) or 0
-        unit_cost = safe_get_value(row, 'Unit Cost', 0) or 0
-        
-        # Convert to proper types
-        quantity = float(quantity) if quantity else 0
-        unit_cost = float(unit_cost) if unit_cost else 0
-        
-        # Get stock and sales data (normalize ASIN for lookup)
-        asin_key = str(asin).strip() if asin else ''
-        stock_info = stock_data.get(asin_key, {})
-        sales_info = sales_data.get(asin_key, {})
-        
-        # Simple production cost estimation (40% of unit cost)
-        production_cost = unit_cost * 0.4
-        
-        # Calculate commission based on marketplace (default FR)
-        commission_rate = settings['commission_fr'] / 100
-        commission = unit_cost * commission_rate
-        
-        # UPS cost and operational cost per unit
-        ups_cost = settings.get('ups_cost_default', 1.0)
-        operational_cost = settings['operational_cost']
-        
-        # Total cost per unit
-        total_cost_per_unit = production_cost + ups_cost + operational_cost + commission
-        
-        # Margin calculation
-        margin_per_unit = unit_cost - total_cost_per_unit
-        margin_percentage = (margin_per_unit / unit_cost * 100) if unit_cost > 0 else 0
-        
-        # Total values
-        total_cost = total_cost_per_unit * quantity
-        total_margin = margin_per_unit * quantity
-        
-        # Determine if needs review
-        needs_review = margin_per_unit < 0 or margin_percentage < settings['minimum_margin']
-        status = "NEEDS_REVIEW" if needs_review else "APPROVED"
-        
-        result = {
-            'PO': str(safe_get_value(row, 'PO', '')),
-            'Vendor': str(safe_get_value(row, 'Vendor', '')),
-            'Ship to Location': str(safe_get_value(row, 'Warehouse', '')),
-            'ASIN': str(asin),
-            'External ID': str(safe_get_value(row, 'External ID', '')),
-            'Model Number': str(safe_get_value(row, 'Model Number', '')),
-            'Title': str(safe_get_value(row, 'Title', '')),
-            'Quantity': int(quantity),
-            'Unit Cost': round(unit_cost, 2),
-            'Production Cost': round(production_cost, 2),
-            'UPS Cost': round(ups_cost, 2),
-            'Operational Cost': round(operational_cost, 2),
-            'Commission': round(commission, 2),
-            'Total Cost/Unit': round(total_cost_per_unit, 2),
-            'Margin/Unit': round(margin_per_unit, 2),
-            'Margin %': round(margin_percentage, 2),
-            'Total Cost': round(total_cost, 2),
-            'Total Margin': round(total_margin, 2),
-            'Stock Quantity': int(stock_info.get('stock_quantity', 0)),
-            'Sales Units (30d)': int(sales_info.get('sales_units', 0)),
-            'Status': status,
-            'Needs Review': needs_review
-        }
-        results.append(result)
+    # Vectorized calculations
+    df['Production Cost'] = (df['Unit Cost'] * 0.4).round(2)
+    df['Commission'] = (df['Unit Cost'] * settings['commission_fr'] / 100).round(2)
+    df['UPS Cost'] = settings.get('ups_cost_default', 1.0)
+    df['Operational Cost'] = settings['operational_cost']
     
-    return pd.DataFrame(results)
+    df['Total Cost/Unit'] = (
+        df['Production Cost'] + df['UPS Cost'] + 
+        df['Operational Cost'] + df['Commission']
+    ).round(2)
+    
+    df['Margin/Unit'] = (df['Unit Cost'] - df['Total Cost/Unit']).round(2)
+    df['Margin %'] = (
+        (df['Margin/Unit'] / df['Unit Cost'] * 100)
+        .fillna(0)
+        .round(2)
+    )
+    
+    df['Total Cost'] = (df['Total Cost/Unit'] * df['Quantity']).round(2)
+    df['Total Margin'] = (df['Margin/Unit'] * df['Quantity']).round(2)
+    
+    # Add stock and sales data (vectorized lookup)
+    df['Stock Quantity'] = df['ASIN'].map(
+        lambda x: stock_data.get(x, {}).get('stock_quantity', 0)
+    ).fillna(0).astype(int)
+    
+    df['Sales Units (30d)'] = df['ASIN'].map(
+        lambda x: sales_data.get(x, {}).get('sales_units', 0)
+    ).fillna(0).astype(int)
+    
+    # Determine status
+    df['Needs Review'] = (
+        (df['Margin/Unit'] < 0) | 
+        (df['Margin %'] < settings['minimum_margin'])
+    )
+    df['Status'] = df['Needs Review'].map({True: 'NEEDS_REVIEW', False: 'APPROVED'})
+    
+    # Prepare final result with clean column names
+    result_df = pd.DataFrame({
+        'PO': df.get('PO', '').fillna('').astype(str),
+        'Vendor': df.get('Vendor', '').fillna('').astype(str),
+        'Ship to Location': df.get('Warehouse', '').fillna('').astype(str),
+        'ASIN': df['ASIN'],
+        'External ID': df.get('External ID', '').fillna('').astype(str),
+        'Model Number': df.get('Model Number', '').fillna('').astype(str),
+        'Title': df.get('Title', '').fillna('').astype(str),
+        'Quantity': df['Quantity'].astype(int),
+        'Unit Cost': df['Unit Cost'],
+        'Production Cost': df['Production Cost'],
+        'UPS Cost': df['UPS Cost'],
+        'Operational Cost': df['Operational Cost'],
+        'Commission': df['Commission'],
+        'Total Cost/Unit': df['Total Cost/Unit'],
+        'Margin/Unit': df['Margin/Unit'],
+        'Margin %': df['Margin %'],
+        'Total Cost': df['Total Cost'],
+        'Total Margin': df['Total Margin'],
+        'Stock Quantity': df['Stock Quantity'],
+        'Sales Units (30d)': df['Sales Units (30d)'],
+        'Status': df['Status'],
+        'Needs Review': df['Needs Review']
+    })
+    
+    return result_df
