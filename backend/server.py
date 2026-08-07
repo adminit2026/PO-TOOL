@@ -4,9 +4,16 @@ Refactored to use modular services and utilities
 """
 from dotenv import load_dotenv
 from pathlib import Path
+import logging
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, UploadFile, File, Depends
 from fastapi.responses import FileResponse
